@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect } from "react";
 import Link from "next/link";
 
 import { PageShell } from "@/components/layout/PageShell";
@@ -5,8 +8,22 @@ import { Card } from "@/components/ui/Card";
 import { buttonStyles } from "@/components/ui/Button";
 import { FeatureCard } from "@/components/cards/FeatureCard";
 import { featureQuickCards } from "@/data/mockFeatures";
+import { getHealth } from "@/lib/api";
 
 export default function Home() {
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const health = await getHealth();
+        console.log("[health-check] GET /api/health success:", health);
+      } catch (error) {
+        console.error("[health-check] GET /api/health failed:", error);
+      }
+    };
+
+    void checkHealth();
+  }, []);
+
   return (
     <PageShell>
       <section className="grid gap-10 lg:grid-cols-12 lg:items-center">
