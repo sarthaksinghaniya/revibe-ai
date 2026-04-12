@@ -17,4 +17,5 @@ function readNumber(key, fallback) {
 export const env = {
   PORT: readNumber("PORT", 4000),
   CORS_ORIGIN: readEnv("CORS_ORIGIN", "http://localhost:3000"),
+  GROQ_API_KEY: readEnv("GROQ_API_KEY", ""),
 };
