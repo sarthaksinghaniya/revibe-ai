@@ -43,7 +43,9 @@ export async function generateAnalysis({ itemName, notes }) {
       notes,
       fallback,
     });
-  } catch {
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn("[analyze] Groq failed, using fallback template:", error?.message ?? error);
     return fallback;
   }
 }

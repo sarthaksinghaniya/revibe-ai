@@ -3,6 +3,19 @@ import Groq from "groq-sdk";
 import { env } from "../config/env.js";
 
 let groqClient = null;
+const MAX_IDEAS = 4;
+const MAX_STEPS = 6;
+const MIN_IDEAS = 2;
+const MIN_STEPS = 3;
+const VAGUE_PATTERNS = [
+  /do your own research/i,
+  /consult (an )?expert/i,
+  /it depends/i,
+  /as needed/i,
+  /etc\./i,
+  /follow local laws/i,
+  /be careful/i,
+];
 
 function getGroqClient() {
   if (!env.GROQ_API_KEY) {
@@ -84,15 +97,47 @@ function parseJsonFromModel(text) {
 }
 
 function sanitizeIdea(idea, index) {
+  const description = String(
+    idea?.description ?? "A simple reuse path based on available components."
+  ).trim();
+
+  const normalizedDescription =
+    description.length >= 30
+      ? description
+      : "Reuse existing parts with minimal cost, basic tools, and clear safety checks.";
+
   return {
     id: String(idea?.id ?? `idea-${index + 1}`),
-    title: String(idea?.title ?? `Reuse Idea ${index + 1}`),
+    title: String(idea?.title ?? `Reuse idea ${index + 1}`).trim(),
     difficulty: normalizeDifficulty(idea?.difficulty),
     estimatedCost: String(idea?.estimatedCost ?? "Low"),
-    description: String(
-      idea?.description ?? "A simple reuse path based on available components."
-    ),
+    description: normalizedDescription,
   };
+}
+
+function isVague(text) {
+  const value = String(text ?? "").trim();
+  if (!value) return true;
+  return VAGUE_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+function mergeFallbackIdeas(ideas, fallbackIdeas) {
+  const next = [...ideas];
+  for (const fallback of fallbackIdeas) {
+    if (next.length >= MIN_IDEAS) break;
+    next.push(sanitizeIdea(fallback, next.length));
+  }
+  return next;
+}
+
+function mergeFallbackSteps(steps, fallbackSteps) {
+  const next = [...steps];
+  for (const fallback of fallbackSteps) {
+    if (next.length >= MIN_STEPS) break;
+    const text = String(fallback ?? "").trim();
+    if (text && !isVague(text)) next.push(text);
+  }
+  return next;
 }
 
 function sanitizeAnalysisPayload(raw, fallback) {
@@ -102,11 +147,29 @@ function sanitizeAnalysisPayload(raw, fallback) {
   const ideasRaw = Array.isArray(raw?.ideas) ? raw.ideas : fallbackIdeas;
   const stepsRaw = Array.isArray(raw?.steps) ? raw.steps : fallbackSteps;
 
-  const ideas = ideasRaw.slice(0, 4).map((idea, index) => sanitizeIdea(idea, index));
-  const steps = stepsRaw
-    .slice(0, 6)
+  let ideas = ideasRaw
+    .slice(0, MAX_IDEAS)
+    .map((idea, index) => sanitizeIdea(idea, index))
+    .filter((idea) => !isVague(idea.title) && !isVague(idea.description));
+
+  let steps = stepsRaw
+    .slice(0, MAX_STEPS)
     .map((step) => String(step ?? "").trim())
-    .filter(Boolean);
+    .filter((step) => step.length >= 15 && !isVague(step));
+
+  ideas = mergeFallbackIdeas(ideas, fallbackIdeas);
+  steps = mergeFallbackSteps(steps, fallbackSteps);
+
+  if (ideas.length === 0) {
+    ideas = fallbackIdeas.slice(0, MIN_IDEAS).map((idea, index) => sanitizeIdea(idea, index));
+  }
+
+  if (steps.length === 0) {
+    steps = fallbackSteps
+      .slice(0, MIN_STEPS)
+      .map((step) => String(step ?? "").trim())
+      .filter(Boolean);
+  }
 
   return {
     material: String(raw?.material ?? fallback?.material ?? "Electronic components (mixed)"),
@@ -117,17 +180,31 @@ function sanitizeAnalysisPayload(raw, fallback) {
       0,
       100
     ),
-    ideas: ideas.length > 0 ? ideas : fallbackIdeas,
-    steps: steps.length > 0 ? steps : fallbackSteps,
+    ideas,
+    steps,
   };
 }
 
 export async function generateAnalysisFromGroq({ itemName, notes, fallback }) {
   const client = getGroqClient();
 
-  const prompt = [
-    "You are helping an e-waste reuse assistant.",
-    "Return ONLY valid JSON with this exact structure:",
+  const systemPrompt = [
+    "You are Revibe AI, an assistant for practical e-waste upcycling.",
+    "You must prioritize beginner-safe, low-cost, realistic reuse ideas.",
+    "Avoid vague advice, legal disclaimers, or generic sustainability slogans.",
+    "Always include concrete safety-aware steps for handling electronics and batteries.",
+    "Return JSON only. Do not include markdown or extra text.",
+  ].join(" ");
+
+  const userPrompt = [
+    "Generate analysis JSON for this item.",
+    "Context rules:",
+    "- Focus on reuse/upcycling, not recycling-center redirection.",
+    "- Suggestions should be doable at home with basic tools and low cost.",
+    "- Keep ideas practical and specific to the item/material.",
+    "- Include at least one explicit safety action in steps.",
+    "- Do not use generic phrases like 'do research', 'consult expert', or 'it depends'.",
+    "Return ONLY valid JSON with this exact structure and key names:",
     "{",
     '  "material": "string",',
     '  "confidence": 0-100 integer,',
@@ -138,7 +215,9 @@ export async function generateAnalysisFromGroq({ itemName, notes, fallback }) {
     "  ],",
     '  "steps": ["string"]',
     "}",
-    "Use concise beginner-friendly recommendations.",
+    "Quality constraints:",
+    "- ideas: 2 to 4 items, concise but concrete",
+    "- steps: 3 to 6 short, actionable steps",
     `Item: ${itemName}`,
     `Notes: ${notes || "None"}`,
   ].join("\n");
@@ -148,8 +227,12 @@ export async function generateAnalysisFromGroq({ itemName, notes, fallback }) {
     temperature: 0.2,
     messages: [
       {
+        role: "system",
+        content: systemPrompt,
+      },
+      {
         role: "user",
-        content: prompt,
+        content: userPrompt,
       },
     ],
   });
