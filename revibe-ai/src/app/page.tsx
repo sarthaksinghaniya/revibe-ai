@@ -62,29 +62,29 @@ export default function Home() {
         </div>
 
         <div className="lg:col-span-5">
-          <Card className="p-6 sm:p-7">
+          <Card className="rounded-3xl border border-border/90 bg-card p-6 shadow-[var(--shadow-soft)] sm:p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold">Your clean workflow</h2>
-                <p className="mt-1 text-sm leading-6 text-foreground/70">
+                <h2 className="text-lg font-semibold text-foreground">Your clean workflow</h2>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
                   Upload → recommendations → guided steps.
                 </p>
               </div>
-              <div className="h-10 w-10 shrink-0 rounded-2xl bg-primary/10 ring-1 ring-border grid place-items-center">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-primary/12 text-primary ring-1 ring-primary/25">
                 <span className="text-primary font-semibold">AI</span>
               </div>
             </div>
 
             <div className="mt-6 grid gap-3">
-              <div className="rounded-xl bg-muted p-4 ring-1 ring-border">
-                <p className="text-sm font-medium">Light, premium UI</p>
-                <p className="mt-1 text-sm text-foreground/70">
+              <div className="rounded-2xl bg-muted/85 p-4 ring-1 ring-border">
+                <p className="text-sm font-medium text-foreground">Light, premium UI</p>
+                <p className="mt-1 text-sm text-muted-foreground">
                   White cards, teal accents, and calm spacing.
                 </p>
               </div>
-              <div className="rounded-xl bg-muted p-4 ring-1 ring-border">
-                <p className="text-sm font-medium">Mock data now</p>
-                <p className="mt-1 text-sm text-foreground/70">
+              <div className="rounded-2xl bg-muted/85 p-4 ring-1 ring-border">
+                <p className="text-sm font-medium text-foreground">Mock data now</p>
+                <p className="mt-1 text-sm text-muted-foreground">
                   Screens are real, data is static—perfect for UX iteration.
                 </p>
               </div>
