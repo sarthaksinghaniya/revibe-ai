@@ -1,5 +1,6 @@
 import { readJsonFile } from "../utils/jsonStore.js";
 import { paths } from "../utils/paths.js";
+import { generateAnalysisFromGroq } from "./ai.service.js";
 
 function normalize(text) {
   return String(text ?? "").toLowerCase();
@@ -31,4 +32,18 @@ export async function pickAnalysisTemplate({ itemName, notes }) {
     ideas: match?.ideas ?? [],
     steps: match?.steps ?? [],
   };
+}
+
+export async function generateAnalysis({ itemName, notes }) {
+  const fallback = await pickAnalysisTemplate({ itemName, notes });
+
+  try {
+    return await generateAnalysisFromGroq({
+      itemName,
+      notes,
+      fallback,
+    });
+  } catch {
+    return fallback;
+  }
 }

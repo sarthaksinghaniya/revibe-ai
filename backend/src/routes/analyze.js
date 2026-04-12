@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { pickAnalysisTemplate } from "../services/analyzeService.js";
+import { generateAnalysis } from "../services/analyzeService.js";
 import { badRequest } from "../utils/httpErrors.js";
 
 export const analyzeRouter = Router();
@@ -17,14 +17,14 @@ analyzeRouter.post("/", (req, res, next) => {
       throw badRequest("`notes` must be a string if provided.");
     }
 
-    const template = await pickAnalysisTemplate({
+    const recommendation = await generateAnalysis({
       itemName,
       notes: notes ?? "",
     });
 
     res.json({
       success: true,
-      data: template,
+      data: recommendation,
     });
     } catch (err) {
       next(err);
