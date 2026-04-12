@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Revibe AI Frontend
 
-## Getting Started
+Next.js App Router frontend for Revibe AI.
 
-First, run the development server:
+## Scripts
+
+- `npm run dev` -> start local dev server
+- `npm run lint` -> run ESLint
+- `npm run build` -> production build
+- `npm run start` -> run production server after build
+
+## Environment Variables
+
+Create `.env.local` from `.env.example`:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Required:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `NEXT_PUBLIC_API_BASE_URL`
+  - Local: `http://localhost:4000`
+  - Production: `https://your-backend-service.onrender.com`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Important:
+- Only `NEXT_PUBLIC_*` vars are exposed to browser code.
+- Never put secrets (Groq key, GitHub client secret) in frontend env.
 
-## Learn More
+## Local Run
 
-To learn more about Next.js, take a look at the following resources:
+1. Start backend on `http://localhost:4000`
+2. Start frontend:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm install
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. Open `http://localhost:3000`
 
-## Deploy on Vercel
+## Production-Like Test
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run lint
+npm run build
+npm run start
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Then verify:
+- Home loads
+- Upload -> Analyze -> Results works
+- Community feed loads/posts
+- Map renders
+- Profile GitHub OAuth connect flow returns to `/profile`
+
+## Deploy (Vercel or Netlify)
+
+1. Set project root to `revibe-ai/`.
+2. Build command: `npm run build`.
+3. Start command (if needed): `npm run start`.
+4. Add env:
+   - `NEXT_PUBLIC_API_BASE_URL=https://<your-backend-domain>`
+5. Redeploy after env updates.
+
+## Backend Wiring Checklist
+
+After frontend deploy, ensure backend env is updated:
+- `CORS_ORIGINS` includes frontend origin
+- `FRONTEND_BASE_URL` equals deployed frontend origin
+- GitHub OAuth app callback URL points to backend callback route

@@ -12,6 +12,8 @@ import { getHealth } from "@/lib/api";
 
 export default function Home() {
   useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+
     const checkHealth = async () => {
       try {
         const health = await getHealth();
