@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -11,10 +11,31 @@ function normalizeGitHubUsername(value: string) {
   return value.trim().replace(/^@+/, "");
 }
 
+const LINKED_REPOS_STORAGE_KEY = "revibe.github.linkedRepoIdsByUsername";
+
+function readLinkedRepoMap(): Record<string, number[]> {
+  if (typeof window === "undefined") return {};
+  const raw = window.localStorage.getItem(LINKED_REPOS_STORAGE_KEY);
+  if (!raw) return {};
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, number[]>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeLinkedRepoMap(value: Record<string, number[]>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(LINKED_REPOS_STORAGE_KEY, JSON.stringify(value));
+}
+
 export function GitHubConnectCard() {
   const [usernameInput, setUsernameInput] = useState("");
   const [connectedUsername, setConnectedUsername] = useState<string | null>(null);
   const [githubData, setGithubData] = useState<GitHubPublicData | null>(null);
+  const [linkedRepoIds, setLinkedRepoIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,6 +45,17 @@ export function GitHubConnectCard() {
   );
 
   const canSave = normalizedInput.length >= 2;
+  const linkedRepos = useMemo(() => {
+    if (!githubData) return [];
+    return githubData.repos.filter((repo) => linkedRepoIds.includes(repo.id));
+  }, [githubData, linkedRepoIds]);
+
+  useEffect(() => {
+    if (!connectedUsername) return;
+    const map = readLinkedRepoMap();
+    map[connectedUsername] = linkedRepoIds;
+    writeLinkedRepoMap(map);
+  }, [connectedUsername, linkedRepoIds]);
 
   async function onSave() {
     if (!canSave) {
@@ -36,11 +68,18 @@ export function GitHubConnectCard() {
 
     try {
       const response = await getGitHubPublicData(normalizedInput);
-      setConnectedUsername(response.data.profile.username);
+      const username = response.data.profile.username;
+      const validPersisted = (readLinkedRepoMap()[username] ?? []).filter((repoId) =>
+        response.data.repos.some((repo) => repo.id === repoId)
+      );
+
+      setConnectedUsername(username);
       setGithubData(response.data);
+      setLinkedRepoIds(validPersisted);
     } catch (fetchError) {
       setGithubData(null);
       setConnectedUsername(null);
+      setLinkedRepoIds([]);
       setError(
         fetchError instanceof Error
           ? fetchError.message
@@ -49,6 +88,12 @@ export function GitHubConnectCard() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function toggleLinkedRepo(repoId: number) {
+    setLinkedRepoIds((prev) =>
+      prev.includes(repoId) ? prev.filter((id) => id !== repoId) : [...prev, repoId]
+    );
   }
 
   return (
@@ -150,6 +195,44 @@ export function GitHubConnectCard() {
 
           <Card className="rounded-2xl p-5">
             <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold">Featured GitHub Projects</h3>
+              <span className="text-xs text-foreground/60">{linkedRepos.length} linked</span>
+            </div>
+            {linkedRepos.length > 0 ? (
+              <div className="mt-3 grid gap-3">
+                {linkedRepos.map((repo) => (
+                  <div key={repo.id} className="rounded-xl bg-muted/50 p-4 ring-1 ring-border">
+                    <div className="flex items-center justify-between gap-2">
+                      <a
+                        href={repo.repoUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm font-semibold text-foreground hover:text-primary hover:underline"
+                      >
+                        {repo.name}
+                      </a>
+                      <Button variant="outline" size="sm" onClick={() => toggleLinkedRepo(repo.id)}>
+                        Remove
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-foreground/70">
+                      {repo.description || "No description provided."}
+                    </p>
+                    <p className="mt-2 text-xs text-foreground/60">
+                      {repo.language || "Language not specified"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-foreground/70">
+                No linked projects yet. Add repositories below to feature them on your profile.
+              </p>
+            )}
+          </Card>
+
+          <Card className="rounded-2xl p-5">
+            <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold">Public repositories</h3>
               <span className="text-xs text-foreground/60">
                 Showing {githubData.repos.length}
@@ -158,10 +241,7 @@ export function GitHubConnectCard() {
             {githubData.repos.length > 0 ? (
               <div className="mt-3 grid gap-3">
                 {githubData.repos.map((repo) => (
-                  <div
-                    key={repo.id}
-                    className="rounded-xl bg-muted/50 p-4 ring-1 ring-border"
-                  >
+                  <div key={repo.id} className="rounded-xl bg-muted/50 p-4 ring-1 ring-border">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <a
                         href={repo.repoUrl}
@@ -183,6 +263,15 @@ export function GitHubConnectCard() {
                     <p className="mt-2 text-xs text-foreground/60">
                       {repo.language || "Language not specified"}
                     </p>
+                    <div className="mt-3">
+                      <Button
+                        variant={linkedRepoIds.includes(repo.id) ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => toggleLinkedRepo(repo.id)}
+                      >
+                        {linkedRepoIds.includes(repo.id) ? "Linked" : "Add to linked projects"}
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
