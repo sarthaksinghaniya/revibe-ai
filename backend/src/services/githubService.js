@@ -5,6 +5,7 @@ import { logInfo, logWarn } from "../utils/logger.js";
 const MAX_USERNAME_LEN = 39;
 const DEFAULT_REPOS_LIMIT = 6;
 const MAX_REPOS_LIMIT = 10;
+const OAUTH_REPOS_LIMIT = 4;
 
 function normalizeUsername(username) {
   return String(username ?? "").trim().replace(/^@+/, "");
@@ -28,6 +29,13 @@ function githubHeaders() {
   return {
     Accept: "application/vnd.github+json",
     "User-Agent": "revibe-ai-backend",
+  };
+}
+
+function githubAuthHeaders(accessToken) {
+  return {
+    ...githubHeaders(),
+    Authorization: `Bearer ${accessToken}`,
   };
 }
 
@@ -122,6 +130,153 @@ async function fetchGitHubJson(url, { requestId, context, username }) {
   }
 
   return response.json();
+}
+
+async function fetchGitHubJsonWithAuth(url, { requestId, context, accessToken }) {
+  let response;
+  try {
+    response = await fetch(url, { headers: githubAuthHeaders(accessToken) });
+  } catch (error) {
+    logWarn("github.api.network_error", {
+      requestId,
+      context,
+      reason: error?.message ?? "Network error",
+    });
+    throw createHttpError(
+      502,
+      "GITHUB_API_UNAVAILABLE",
+      "Could not reach GitHub API right now. Please try again shortly."
+    );
+  }
+
+  if (response.status === 401) {
+    throw createHttpError(401, "GITHUB_INVALID_TOKEN", "GitHub access token is invalid.");
+  }
+
+  if (response.status === 403) {
+    const rateLimit = getRateLimitMeta(response);
+    if (rateLimit.remaining === 0) {
+      throw createHttpError(
+        429,
+        "GITHUB_RATE_LIMIT",
+        "GitHub API rate limit reached. Please try again later.",
+        rateLimit
+      );
+    }
+  }
+
+  if (!response.ok) {
+    logWarn("github.api.failed", {
+      requestId,
+      context,
+      status: response.status,
+    });
+    throw createHttpError(
+      502,
+      "GITHUB_API_ERROR",
+      "GitHub API returned an unexpected response."
+    );
+  }
+
+  return response.json();
+}
+
+function ensureOAuthConfig() {
+  if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET || !env.GITHUB_REDIRECT_URI) {
+    throw createHttpError(
+      500,
+      "GITHUB_OAUTH_NOT_CONFIGURED",
+      "GitHub OAuth is not configured on the server."
+    );
+  }
+}
+
+export function buildGitHubOAuthAuthorizeUrl({ state }) {
+  ensureOAuthConfig();
+  const url = new URL("https://github.com/login/oauth/authorize");
+  url.searchParams.set("client_id", env.GITHUB_CLIENT_ID);
+  url.searchParams.set("redirect_uri", env.GITHUB_REDIRECT_URI);
+  url.searchParams.set("scope", "read:user");
+  url.searchParams.set("state", state);
+  return url.toString();
+}
+
+export async function exchangeGitHubCodeForToken({ code, state, requestId }) {
+  ensureOAuthConfig();
+
+  let response;
+  try {
+    response = await fetch("https://github.com/login/oauth/access_token", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": "revibe-ai-backend",
+      },
+      body: JSON.stringify({
+        client_id: env.GITHUB_CLIENT_ID,
+        client_secret: env.GITHUB_CLIENT_SECRET,
+        code,
+        redirect_uri: env.GITHUB_REDIRECT_URI,
+        state,
+      }),
+    });
+  } catch (error) {
+    logWarn("github.oauth.token_exchange.network_error", {
+      requestId,
+      reason: error?.message ?? "Network error",
+    });
+    throw createHttpError(
+      502,
+      "GITHUB_OAUTH_EXCHANGE_FAILED",
+      "Could not complete GitHub authentication right now."
+    );
+  }
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.access_token) {
+    throw createHttpError(
+      401,
+      "GITHUB_OAUTH_EXCHANGE_FAILED",
+      "GitHub authentication failed. Please try connecting again."
+    );
+  }
+
+  return String(payload.access_token);
+}
+
+export async function fetchGitHubOAuthUserData({ accessToken, requestId }) {
+  const base = env.GITHUB_API_BASE_URL.replace(/\/$/, "");
+
+  const [userRaw, reposRaw] = await Promise.all([
+    fetchGitHubJsonWithAuth(`${base}/user`, {
+      requestId,
+      context: "oauth_profile",
+      accessToken,
+    }),
+    fetchGitHubJsonWithAuth(
+      `${base}/user/repos?visibility=public&affiliation=owner&sort=updated&per_page=${OAUTH_REPOS_LIMIT}`,
+      {
+        requestId,
+        context: "oauth_repos",
+        accessToken,
+      }
+    ),
+  ]);
+
+  const repos = Array.isArray(reposRaw) ? reposRaw : [];
+  repos.sort(
+    (a, b) =>
+      new Date(b?.updated_at ?? 0).getTime() - new Date(a?.updated_at ?? 0).getTime()
+  );
+
+  return {
+    username: userRaw.login,
+    name: userRaw.name,
+    avatarUrl: userRaw.avatar_url,
+    profileUrl: userRaw.html_url,
+    repos: repos.slice(0, OAUTH_REPOS_LIMIT).map(mapRepo),
+  };
 }
 
 export async function fetchPublicGitHubData({ username, requestId }) {

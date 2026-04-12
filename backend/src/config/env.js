@@ -20,4 +20,11 @@ export const env = {
   GROQ_API_KEY: readEnv("GROQ_API_KEY", ""),
   GITHUB_API_BASE_URL: readEnv("GITHUB_API_BASE_URL", "https://api.github.com"),
   GITHUB_REPOS_LIMIT: readNumber("GITHUB_REPOS_LIMIT", 6),
+  FRONTEND_BASE_URL: readEnv("FRONTEND_BASE_URL", "http://localhost:3000"),
+  GITHUB_CLIENT_ID: readEnv("GITHUB_CLIENT_ID", ""),
+  GITHUB_CLIENT_SECRET: readEnv("GITHUB_CLIENT_SECRET", ""),
+  GITHUB_REDIRECT_URI: readEnv(
+    "GITHUB_REDIRECT_URI",
+    "http://localhost:4000/api/github/callback"
+  ),
 };

@@ -15,4 +15,6 @@ Server defaults to `http://localhost:4000`.
 - `GET /api/posts`
 - `POST /api/posts`
 - `GET /api/posts/:id`
+- `GET /api/github/auth`
+- `GET /api/github/callback`
 - `GET /api/github/:username`

@@ -5,11 +5,15 @@ import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { getGitHubPublicData, type GitHubPublicData } from "@/lib/api";
+import { buildApiUrl, type GitHubPublicRepo } from "@/lib/api";
 
-function normalizeGitHubUsername(value: string) {
-  return value.trim().replace(/^@+/, "");
-}
+type OAuthGitHubData = {
+  username: string;
+  name: string | null;
+  avatarUrl: string | null;
+  profileUrl: string;
+  repos: GitHubPublicRepo[];
+};
 
 const LINKED_REPOS_STORAGE_KEY = "revibe.github.linkedRepoIdsByUsername";
 
@@ -31,63 +35,104 @@ function writeLinkedRepoMap(value: Record<string, number[]>) {
   window.localStorage.setItem(LINKED_REPOS_STORAGE_KEY, JSON.stringify(value));
 }
 
+function decodeOAuthPayload(encoded: string): OAuthGitHubData {
+  const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+  const json = window.atob(padded);
+  return JSON.parse(json) as OAuthGitHubData;
+}
+
 export function GitHubConnectCard() {
-  const [usernameInput, setUsernameInput] = useState("");
-  const [connectedUsername, setConnectedUsername] = useState<string | null>(null);
-  const [githubData, setGithubData] = useState<GitHubPublicData | null>(null);
-  const [linkedRepoIds, setLinkedRepoIds] = useState<number[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [initialOAuthState] = useState(() => {
+    if (typeof window === "undefined") {
+      return {
+        githubData: null as OAuthGitHubData | null,
+        linkedRepoIds: [] as number[],
+        error: null as string | null,
+        hadOAuthParams: false,
+      };
+    }
 
-  const normalizedInput = useMemo(
-    () => normalizeGitHubUsername(usernameInput),
-    [usernameInput]
+    const url = new URL(window.location.href);
+    const oauthStatus = url.searchParams.get("github_oauth");
+    const oauthError = url.searchParams.get("github_error");
+    const oauthData = url.searchParams.get("github_data");
+
+    if (oauthStatus === "success" && oauthData) {
+      try {
+        const decoded = decodeOAuthPayload(oauthData);
+        const persisted = readLinkedRepoMap()[decoded.username] ?? [];
+        const validPersisted = persisted.filter((repoId) =>
+          decoded.repos.some((repo) => repo.id === repoId)
+        );
+        return {
+          githubData: decoded,
+          linkedRepoIds: validPersisted,
+          error: null,
+          hadOAuthParams: true,
+        };
+      } catch {
+        return {
+          githubData: null,
+          linkedRepoIds: [],
+          error: "GitHub data could not be parsed. Please connect again.",
+          hadOAuthParams: true,
+        };
+      }
+    }
+
+    if (oauthStatus === "error") {
+      return {
+        githubData: null,
+        linkedRepoIds: [],
+        error: oauthError || "GitHub authentication failed. Please try again.",
+        hadOAuthParams: true,
+      };
+    }
+
+    return {
+      githubData: null,
+      linkedRepoIds: [],
+      error: null,
+      hadOAuthParams: false,
+    };
+  });
+
+  const [githubData] = useState<OAuthGitHubData | null>(initialOAuthState.githubData);
+  const [linkedRepoIds, setLinkedRepoIds] = useState<number[]>(
+    initialOAuthState.linkedRepoIds
   );
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [error] = useState<string | null>(initialOAuthState.error);
 
-  const canSave = normalizedInput.length >= 2;
   const linkedRepos = useMemo(() => {
     if (!githubData) return [];
     return githubData.repos.filter((repo) => linkedRepoIds.includes(repo.id));
   }, [githubData, linkedRepoIds]);
 
   useEffect(() => {
-    if (!connectedUsername) return;
+    if (!githubData?.username) return;
     const map = readLinkedRepoMap();
-    map[connectedUsername] = linkedRepoIds;
+    map[githubData.username] = linkedRepoIds;
     writeLinkedRepoMap(map);
-  }, [connectedUsername, linkedRepoIds]);
+  }, [githubData, linkedRepoIds]);
 
-  async function onSave() {
-    if (!canSave) {
-      setError("Please enter a valid GitHub username (at least 2 characters).");
-      return;
-    }
+  useEffect(() => {
+    if (!initialOAuthState.hadOAuthParams || typeof window === "undefined") return;
 
-    setIsLoading(true);
-    setError(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("github_oauth");
+    url.searchParams.delete("github_error");
+    url.searchParams.delete("github_data");
+    window.history.replaceState({}, "", url.toString());
+  }, [initialOAuthState.hadOAuthParams]);
 
-    try {
-      const response = await getGitHubPublicData(normalizedInput);
-      const username = response.data.profile.username;
-      const validPersisted = (readLinkedRepoMap()[username] ?? []).filter((repoId) =>
-        response.data.repos.some((repo) => repo.id === repoId)
-      );
-
-      setConnectedUsername(username);
-      setGithubData(response.data);
-      setLinkedRepoIds(validPersisted);
-    } catch (fetchError) {
-      setGithubData(null);
-      setConnectedUsername(null);
-      setLinkedRepoIds([]);
-      setError(
-        fetchError instanceof Error
-          ? fetchError.message
-          : "Could not fetch GitHub profile right now."
-      );
-    } finally {
-      setIsLoading(false);
-    }
+  function startOAuthFlow() {
+    if (typeof window === "undefined") return;
+    setIsRedirecting(true);
+    const returnTo = `${window.location.origin}/profile`;
+    const authUrl = buildApiUrl(`/api/github/auth?redirect=${encodeURIComponent(returnTo)}`);
+    window.location.href = authUrl;
   }
 
   function toggleLinkedRepo(repoId: number) {
@@ -102,67 +147,46 @@ export function GitHubConnectCard() {
         <div>
           <h2 className="text-lg font-semibold">GitHub Connection</h2>
           <p className="mt-1 text-sm leading-6 text-foreground/70">
-            Add your public GitHub username. We’ll use this later to showcase
-            selected public projects on your Revibe AI profile.
+            Connect your GitHub account securely. We’ll show selected public projects
+            on your Revibe AI profile.
           </p>
         </div>
         <StatusBadge
-          label={connectedUsername ? "Connected" : "Not connected"}
-          variant={connectedUsername ? "low" : "neutral"}
+          label={githubData ? "Connected" : "Not connected"}
+          variant={githubData ? "low" : "neutral"}
         />
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">GitHub username</span>
-          <input
-            value={usernameInput}
-            onChange={(e) => {
-              setUsernameInput(e.target.value);
-              if (error) setError(null);
-            }}
-            placeholder="e.g. octocat"
-            autoComplete="off"
-            spellCheck={false}
-            className="h-11 rounded-full bg-card px-4 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </label>
-        <Button onClick={onSave} disabled={!canSave || isLoading}>
-          {isLoading ? "Connecting..." : connectedUsername ? "Update" : "Connect"}
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <Button onClick={startOAuthFlow} disabled={isRedirecting}>
+          {isRedirecting
+            ? "Redirecting to GitHub..."
+            : githubData
+            ? "Reconnect GitHub"
+            : "Connect GitHub"}
         </Button>
+        <p className="text-sm text-foreground/70">
+          OAuth flow only uses public GitHub account data.
+        </p>
       </div>
 
       {error ? <p className="mt-3 text-sm text-rose-700">{error}</p> : null}
 
-      <div className="mt-4 rounded-2xl bg-muted/60 p-4 ring-1 ring-border">
-        {connectedUsername ? (
-          <p className="text-sm text-foreground/80">
-            Connected as{" "}
-            <span className="font-semibold text-foreground">@{connectedUsername}</span>
-          </p>
-        ) : (
+      {!githubData ? (
+        <div className="mt-4 rounded-2xl bg-muted/60 p-4 ring-1 ring-border">
           <p className="text-sm text-foreground/70">
-            Connect your username to preview how your developer identity will
-            appear on your profile.
+            Connect GitHub to preview your public profile and choose featured repositories.
           </p>
-        )}
-      </div>
-
-      {isLoading ? (
-        <Card className="mt-4 rounded-2xl bg-muted/40 p-4 ring-1 ring-border">
-          <p className="text-sm text-foreground/70">Fetching public GitHub profile...</p>
-        </Card>
-      ) : null}
-
-      {githubData ? (
+        </div>
+      ) : (
         <div className="mt-4 grid gap-4">
           <Card className="rounded-2xl p-5">
             <div className="flex items-start gap-4">
-              {githubData.profile.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- External avatar URL from GitHub public API
+              {githubData.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- External avatar URL from GitHub OAuth profile response
                 <img
-                  src={githubData.profile.avatarUrl}
-                  alt={`${githubData.profile.username} avatar`}
+                  src={githubData.avatarUrl}
+                  alt={`${githubData.username} avatar`}
                   className="h-14 w-14 rounded-full ring-1 ring-border object-cover"
                 />
               ) : (
@@ -170,19 +194,11 @@ export function GitHubConnectCard() {
               )}
               <div className="min-w-0">
                 <p className="text-base font-semibold">
-                  {githubData.profile.name || githubData.profile.username}
+                  {githubData.name || githubData.username}
                 </p>
-                <p className="text-sm text-foreground/70">@{githubData.profile.username}</p>
-                <p className="mt-2 text-sm leading-6 text-foreground/75">
-                  {githubData.profile.bio || "No public bio available."}
-                </p>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <StatusBadge label={`${githubData.profile.followers} followers`} />
-                  <StatusBadge label={`${githubData.profile.following} following`} />
-                  <StatusBadge label={`${githubData.profile.publicRepos} public repos`} />
-                </div>
+                <p className="text-sm text-foreground/70">@{githubData.username}</p>
                 <a
-                  href={githubData.profile.profileUrl}
+                  href={githubData.profileUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-3 inline-flex text-sm font-medium text-primary hover:underline"
@@ -234,9 +250,7 @@ export function GitHubConnectCard() {
           <Card className="rounded-2xl p-5">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold">Public repositories</h3>
-              <span className="text-xs text-foreground/60">
-                Showing {githubData.repos.length}
-              </span>
+              <span className="text-xs text-foreground/60">Showing {githubData.repos.length}</span>
             </div>
             {githubData.repos.length > 0 ? (
               <div className="mt-3 grid gap-3">
@@ -282,7 +296,7 @@ export function GitHubConnectCard() {
             )}
           </Card>
         </div>
-      ) : null}
+      )}
     </Card>
   );
 }
