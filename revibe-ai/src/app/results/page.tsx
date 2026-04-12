@@ -286,10 +286,11 @@ export default function ResultsPage() {
         <Card className="p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="text-sm font-semibold">Nearby resources (preview)</h3>
+              <h3 className="text-sm font-semibold">Nearby Resources</h3>
               <p className="mt-2 text-sm leading-6 text-foreground/70">
-                OpenStreetMap preview placeholder. Resource markers and backend data
-                will be connected in the next steps.
+                Quickly scan nearby scrap shops, recycling points, and useful
+                material spots. This is a map preview; live resource locations come
+                in the next step.
               </p>
             </div>
             <StatusBadge label="Map later" variant="neutral" />
