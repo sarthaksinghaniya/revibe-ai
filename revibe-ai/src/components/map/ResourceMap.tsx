@@ -4,11 +4,20 @@ import { useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import type { LeafletEventHandlerFnMap, Map as LeafletMap, PathOptions } from "leaflet";
 
-import { mockResources, type ResourceType } from "@/data/mockResources";
+import { cn } from "@/lib/cn";
+import type { MapResource, ResourceType } from "@/data/mockResources";
+
+function InlineMapLoading() {
+  return (
+    <div className="h-full w-full grid place-items-center bg-muted/50">
+      <p className="text-sm text-foreground/60">Loading map preview...</p>
+    </div>
+  );
+}
 
 const MapContainer = dynamic(
   () => import("react-leaflet").then((mod) => mod.MapContainer),
-  { ssr: false }
+  { ssr: false, loading: InlineMapLoading }
 );
 const TileLayer = dynamic(() => import("react-leaflet").then((mod) => mod.TileLayer), {
   ssr: false,
@@ -53,16 +62,24 @@ const markerStylesByType: Record<ResourceType, PathOptions> = {
 };
 
 type ResourceMapProps = {
+  resources: MapResource[];
   activeResourceId?: string | null;
   onSelectResource?: (resourceId: string) => void;
+  className?: string;
 };
 
-export function ResourceMap({ activeResourceId = null, onSelectResource }: ResourceMapProps) {
+export function ResourceMap({
+  resources,
+  activeResourceId = null,
+  onSelectResource,
+  className,
+}: ResourceMapProps) {
   const mapRef = useRef<LeafletMap | null>(null);
   const activeResource = useMemo(
-    () => mockResources.find((resource) => resource.id === activeResourceId) ?? null,
-    [activeResourceId]
+    () => resources.find((resource) => resource.id === activeResourceId) ?? null,
+    [activeResourceId, resources]
   );
+  const hasResources = resources.length > 0;
 
   useEffect(() => {
     if (!activeResource || !mapRef.current) return;
@@ -71,10 +88,34 @@ export function ResourceMap({ activeResourceId = null, onSelectResource }: Resou
     });
   }, [activeResource]);
 
+  if (!hasResources) {
+    return (
+      <div
+        className={cn(
+          "h-64 w-full rounded-2xl bg-muted/40 ring-1 ring-border sm:h-72 lg:h-80",
+          "grid place-items-center p-6 text-center",
+          className
+        )}
+      >
+        <div>
+          <p className="text-sm font-medium">No resource points available</p>
+          <p className="mt-1 text-sm text-foreground/70">
+            Map markers will appear here once resource data is available.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="revibe-resource-map h-64 w-full overflow-hidden rounded-2xl ring-1 ring-border sm:h-72">
+    <div
+      className={cn(
+        "revibe-resource-map h-64 w-full overflow-hidden rounded-2xl ring-1 ring-border sm:h-72 lg:h-80",
+        className
+      )}
+    >
       <MapContainer
-        center={DEFAULT_CENTER}
+        center={activeResource ? [activeResource.lat, activeResource.lng] : DEFAULT_CENTER}
         zoom={DEFAULT_ZOOM}
         scrollWheelZoom={false}
         className="h-full w-full"
@@ -87,7 +128,7 @@ export function ResourceMap({ activeResourceId = null, onSelectResource }: Resou
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        {mockResources.map((resource) => {
+        {resources.map((resource) => {
           const isActive = activeResourceId === resource.id;
           const handlers: LeafletEventHandlerFnMap | undefined = onSelectResource
             ? {
@@ -107,12 +148,12 @@ export function ResourceMap({ activeResourceId = null, onSelectResource }: Resou
               eventHandlers={handlers}
             >
               <Popup>
-                <div className="min-w-44">
-                  <p className="text-sm font-semibold text-slate-900">{resource.name}</p>
-                  <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">
+                <div className="min-w-44 max-w-56">
+                  <p className="text-sm font-semibold text-foreground">{resource.name}</p>
+                  <p className="mt-1 text-xs font-medium uppercase tracking-wide text-foreground/60">
                     {resource.type}
                   </p>
-                  <p className="mt-2 text-xs leading-5 text-slate-700">
+                  <p className="mt-2 text-xs leading-5 text-foreground/75">
                     {resource.description}
                   </p>
                 </div>

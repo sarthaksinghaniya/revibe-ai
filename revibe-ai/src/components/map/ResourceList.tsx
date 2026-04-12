@@ -15,8 +15,19 @@ export function ResourceList({
   activeResourceId,
   onSelectResource,
 }: ResourceListProps) {
+  if (resources.length === 0) {
+    return (
+      <Card className="rounded-2xl p-5">
+        <p className="text-sm font-medium">No nearby resources yet</p>
+        <p className="mt-1 text-sm text-foreground/70">
+          Resource cards will appear here when marker data is available.
+        </p>
+      </Card>
+    );
+  }
+
   return (
-    <div className="grid gap-3">
+    <div className="grid max-h-[22.5rem] gap-3 overflow-auto pr-1 lg:max-h-[20rem]">
       {resources.map((resource) => {
         const isActive = activeResourceId === resource.id;
 
@@ -25,7 +36,7 @@ export function ResourceList({
             key={resource.id}
             type="button"
             onClick={() => onSelectResource(resource.id)}
-            className="text-left"
+            className="rounded-2xl text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Card
               className={cn(

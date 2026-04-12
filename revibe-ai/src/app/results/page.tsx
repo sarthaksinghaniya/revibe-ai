@@ -115,8 +115,9 @@ export default function ResultsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [analysis, setAnalysis] = useState<StoredAnalysis | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const resources = mockResources;
   const [activeResourceId, setActiveResourceId] = useState<string | null>(
-    mockResources[0]?.id ?? null
+    resources[0]?.id ?? null
   );
 
   useEffect(() => {
@@ -289,7 +290,7 @@ export default function ResultsPage() {
 
       <div className="mt-10">
         <Card className="p-6">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h3 className="text-sm font-semibold">Nearby Resources</h3>
               <p className="mt-2 text-sm leading-6 text-foreground/70">
@@ -298,18 +299,22 @@ export default function ResultsPage() {
                 in the next step.
               </p>
             </div>
-            <StatusBadge label="Map later" variant="neutral" />
+            <StatusBadge
+              label={resources.length > 0 ? `${resources.length} mock points` : "Map later"}
+              variant="neutral"
+            />
           </div>
-          <div className="mt-5 grid gap-4 lg:grid-cols-12">
-            <div className="lg:col-span-7">
+          <div className="mt-5 grid gap-4 xl:grid-cols-12 xl:items-start">
+            <div className="xl:col-span-7">
               <ResourceMap
+                resources={resources}
                 activeResourceId={activeResourceId}
                 onSelectResource={setActiveResourceId}
               />
             </div>
-            <div className="lg:col-span-5">
+            <div className="xl:col-span-5">
               <ResourceList
-                resources={mockResources}
+                resources={resources}
                 activeResourceId={activeResourceId}
                 onSelectResource={setActiveResourceId}
               />

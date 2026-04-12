@@ -60,3 +60,12 @@ body {
   font-family: var(--font-sans);
   background: var(--muted);
 }
+
+.revibe-resource-map .leaflet-popup-content-wrapper {
+  border-radius: 14px;
+  box-shadow: var(--shadow-soft-sm);
+}
+
+.revibe-resource-map .leaflet-popup-content {
+  margin: 12px 14px;
+}
