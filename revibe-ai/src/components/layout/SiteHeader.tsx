@@ -12,6 +12,15 @@ export function SiteHeader() {
         </Link>
         <nav className="flex items-center gap-2">
           <Link
+            href="/profile"
+            className={buttonStyles({
+              variant: "ghost",
+              className: "hidden sm:inline-flex",
+            })}
+          >
+            Profile
+          </Link>
+          <Link
             href="/community"
             className={buttonStyles({
               variant: "ghost",
