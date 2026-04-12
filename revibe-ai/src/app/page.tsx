@@ -28,15 +28,16 @@ export default function Home() {
 
   return (
     <PageShell>
-      <section className="grid gap-10 lg:grid-cols-12 lg:items-center">
+      <section className="rounded-3xl border border-border bg-gradient-to-b from-card to-muted/40 p-6 sm:p-8 lg:p-10">
+        <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
         <div className="lg:col-span-7">
-          <p className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground/70 ring-1 ring-border">
+          <p className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border">
             Eco-tech · Beginner-friendly · Step-by-step
           </p>
-          <h1 className="mt-5 text-pretty text-4xl font-semibold tracking-tight sm:text-5xl">
+          <h1 className="mt-5 text-pretty text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
             Turn e-waste into practical projects—guided by AI.
           </h1>
-          <p className="mt-4 max-w-xl text-pretty text-base leading-7 text-foreground/70 sm:text-lg">
+          <p className="mt-4 max-w-xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg">
             Upload a device photo or details, get reuse ideas, and follow a clear
             build plan. Share progress with the community when you’re ready.
           </p>
@@ -46,12 +47,16 @@ export default function Home() {
             </Link>
             <Link
               href="/community"
-              className={buttonStyles({ size: "lg", variant: "outline" })}
+              className={buttonStyles({
+                size: "lg",
+                variant: "outline",
+                className: "bg-card/90 text-foreground/85 hover:bg-muted/80",
+              })}
             >
               Browse community
             </Link>
           </div>
-          <p className="mt-3 text-sm text-foreground/60">
+          <p className="mt-3 text-sm text-muted-foreground">
             Live flow: upload → AI results → community.
           </p>
         </div>
@@ -85,6 +90,7 @@ export default function Home() {
               </div>
             </div>
           </Card>
+        </div>
         </div>
       </section>
 
