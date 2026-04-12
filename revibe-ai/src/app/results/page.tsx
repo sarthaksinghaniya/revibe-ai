@@ -10,7 +10,9 @@ import { Button, buttonStyles } from "@/components/ui/Button";
 import { RiskBadge, StatusBadge } from "@/components/ui/StatusBadge";
 import { Icon } from "@/components/ui/Icon";
 import { IdeaCard } from "@/components/cards/IdeaCard";
+import { ResourceList } from "@/components/map/ResourceList";
 import { ResourceMap } from "@/components/map/ResourceMap";
+import { mockResources } from "@/data/mockResources";
 import type { ReuseIdea, RiskLevel } from "@/data/mockAnalysis";
 import { readLatestAnalysis, type StoredAnalysis } from "@/lib/analysisSession";
 
@@ -113,6 +115,9 @@ export default function ResultsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [analysis, setAnalysis] = useState<StoredAnalysis | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [activeResourceId, setActiveResourceId] = useState<string | null>(
+    mockResources[0]?.id ?? null
+  );
 
   useEffect(() => {
     try {
@@ -295,8 +300,20 @@ export default function ResultsPage() {
             </div>
             <StatusBadge label="Map later" variant="neutral" />
           </div>
-          <div className="mt-5">
-            <ResourceMap />
+          <div className="mt-5 grid gap-4 lg:grid-cols-12">
+            <div className="lg:col-span-7">
+              <ResourceMap
+                activeResourceId={activeResourceId}
+                onSelectResource={setActiveResourceId}
+              />
+            </div>
+            <div className="lg:col-span-5">
+              <ResourceList
+                resources={mockResources}
+                activeResourceId={activeResourceId}
+                onSelectResource={setActiveResourceId}
+              />
+            </div>
           </div>
         </Card>
       </div>
