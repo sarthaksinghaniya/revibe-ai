@@ -1,4 +1,5 @@
 import { logError } from "../utils/logger.js";
+import { env } from "../config/env.js";
 
 export function notFoundHandler(req, res) {
   const requestId = req?.requestId ?? "unknown";
@@ -22,7 +23,11 @@ export function errorHandler(err, req, res, _next) {
 
   const message =
     status >= 500
-      ? "Unexpected server error"
+      ? env.NODE_ENV === "production"
+        ? "Unexpected server error"
+        : typeof err?.message === "string"
+        ? err.message
+        : "Unexpected server error"
       : typeof err?.message === "string"
       ? err.message
       : "Request failed";
