@@ -4,10 +4,10 @@ import type { RiskLevel } from "@/data/mockAnalysis";
 type Variant = "neutral" | "low" | "medium" | "high";
 
 const variants: Record<Variant, string> = {
-  neutral: "bg-muted text-muted-foreground ring-border",
-  low: "bg-green-50 text-green-800 ring-green-200",
-  medium: "bg-amber-50 text-amber-800 ring-amber-200",
-  high: "bg-rose-50 text-rose-900 ring-rose-200",
+  neutral: "bg-muted text-slate-600 ring-border",
+  low: "bg-primary/12 text-primary ring-primary/25",
+  medium: "bg-teal-50 text-teal-700 ring-teal-200",
+  high: "bg-rose-50 text-rose-800 ring-rose-200",
 };
 
 function riskToVariant(risk: RiskLevel): Variant {
@@ -26,7 +26,7 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1",
+        "inline-flex items-center rounded-xl px-3 py-1 text-xs font-medium ring-1 transition-colors duration-200",
         variants[variant],
       )}
     >

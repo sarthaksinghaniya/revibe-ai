@@ -11,17 +11,17 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-full font-medium transition-all duration-200 ease-[var(--ease-out-quint)] outline-none select-none active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-60";
+  "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200 ease-[var(--ease-out-quint)] outline-none select-none active:translate-y-px focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-60";
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary text-primary-foreground shadow-soft-sm hover:opacity-95 hover:shadow-[var(--shadow-soft)]",
+    "bg-gradient-to-b from-primary to-teal-500 text-primary-foreground shadow-soft-sm hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]",
   secondary:
-    "bg-muted text-foreground hover:bg-muted/80",
+    "bg-muted/80 text-foreground ring-1 ring-border hover:-translate-y-0.5 hover:bg-muted",
   outline:
-    "bg-card text-foreground ring-1 ring-border hover:bg-muted",
+    "bg-card text-foreground ring-1 ring-border hover:-translate-y-0.5 hover:bg-muted/75",
   ghost:
-    "bg-transparent text-foreground hover:bg-muted",
+    "bg-transparent text-muted-foreground hover:bg-muted/75 hover:text-foreground",
 };
 
 const sizes: Record<ButtonSize, string> = {

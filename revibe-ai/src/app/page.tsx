@@ -31,7 +31,7 @@ export default function Home() {
       <section className="rounded-3xl border border-border bg-gradient-to-b from-card to-muted/40 p-6 sm:p-8 lg:p-10">
         <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
         <div className="lg:col-span-7">
-          <p className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border">
+          <p className="inline-flex items-center rounded-xl bg-muted px-3 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border">
             Eco-tech · Beginner-friendly · Step-by-step
           </p>
           <h1 className="mt-5 text-pretty text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
