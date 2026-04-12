@@ -133,6 +133,61 @@ export const createPost = (
   return apiPostJson<CreatePostResponse>("/api/posts", payload);
 };
 
+export type GitHubPublicProfile = {
+  username: string;
+  name: string | null;
+  avatarUrl: string | null;
+  bio: string | null;
+  followers: number;
+  following: number;
+  publicRepos: number;
+  profileUrl: string;
+};
+
+export type GitHubPublicRepo = {
+  id: number;
+  name: string;
+  description: string | null;
+  stars: number;
+  forks: number;
+  language: string | null;
+  repoUrl: string;
+  updatedAt: string;
+};
+
+export type GitHubPublicData = {
+  profile: GitHubPublicProfile;
+  repos: GitHubPublicRepo[];
+};
+
+export type GitHubPublicResponse = {
+  success: boolean;
+  data: GitHubPublicData;
+};
+
+export const getGitHubPublicData = async (
+  username: string
+): Promise<GitHubPublicResponse> => {
+  const response = await apiFetch(`/api/github/${encodeURIComponent(username)}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message =
+      typeof payload?.error?.message === "string"
+        ? payload.error.message
+        : `Request failed: ${response.status} ${response.statusText}`;
+    throw new Error(message);
+  }
+
+  return payload as GitHubPublicResponse;
+};
+
 export const logApiBaseUrl = (): void => {
   console.log("[api] NEXT_PUBLIC_API_BASE_URL:", API_BASE_URL || "(not set)");
 };
