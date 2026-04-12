@@ -15,7 +15,16 @@ type OAuthGitHubData = {
   repos: GitHubPublicRepo[];
 };
 
+type InitialGitHubState = {
+  githubData: OAuthGitHubData | null;
+  linkedRepoIds: number[];
+  error: string | null;
+  notice: string | null;
+  hadOAuthParams: boolean;
+};
+
 const LINKED_REPOS_STORAGE_KEY = "revibe.github.linkedRepoIdsByUsername";
+const CONNECTED_GITHUB_STORAGE_KEY = "revibe.github.connectedProfile";
 
 function readLinkedRepoMap(): Record<string, number[]> {
   if (typeof window === "undefined") return {};
@@ -35,6 +44,29 @@ function writeLinkedRepoMap(value: Record<string, number[]>) {
   window.localStorage.setItem(LINKED_REPOS_STORAGE_KEY, JSON.stringify(value));
 }
 
+function readPersistedGitHubData(): OAuthGitHubData | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(CONNECTED_GITHUB_STORAGE_KEY);
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as OAuthGitHubData;
+    if (!parsed?.username || !Array.isArray(parsed?.repos)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedGitHubData(value: OAuthGitHubData | null) {
+  if (typeof window === "undefined") return;
+  if (!value) {
+    window.localStorage.removeItem(CONNECTED_GITHUB_STORAGE_KEY);
+    return;
+  }
+  window.localStorage.setItem(CONNECTED_GITHUB_STORAGE_KEY, JSON.stringify(value));
+}
+
 function decodeOAuthPayload(encoded: string): OAuthGitHubData {
   const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
   const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
@@ -42,68 +74,91 @@ function decodeOAuthPayload(encoded: string): OAuthGitHubData {
   return JSON.parse(json) as OAuthGitHubData;
 }
 
-export function GitHubConnectCard() {
-  const [initialOAuthState] = useState(() => {
-    if (typeof window === "undefined") {
-      return {
-        githubData: null as OAuthGitHubData | null,
-        linkedRepoIds: [] as number[],
-        error: null as string | null,
-        hadOAuthParams: false,
-      };
-    }
-
-    const url = new URL(window.location.href);
-    const oauthStatus = url.searchParams.get("github_oauth");
-    const oauthError = url.searchParams.get("github_error");
-    const oauthData = url.searchParams.get("github_data");
-
-    if (oauthStatus === "success" && oauthData) {
-      try {
-        const decoded = decodeOAuthPayload(oauthData);
-        const persisted = readLinkedRepoMap()[decoded.username] ?? [];
-        const validPersisted = persisted.filter((repoId) =>
-          decoded.repos.some((repo) => repo.id === repoId)
-        );
-        return {
-          githubData: decoded,
-          linkedRepoIds: validPersisted,
-          error: null,
-          hadOAuthParams: true,
-        };
-      } catch {
-        return {
-          githubData: null,
-          linkedRepoIds: [],
-          error: "GitHub data could not be parsed. Please connect again.",
-          hadOAuthParams: true,
-        };
-      }
-    }
-
-    if (oauthStatus === "error") {
-      return {
-        githubData: null,
-        linkedRepoIds: [],
-        error: oauthError || "GitHub authentication failed. Please try again.",
-        hadOAuthParams: true,
-      };
-    }
-
+function deriveInitialState(): InitialGitHubState {
+  if (typeof window === "undefined") {
     return {
       githubData: null,
       linkedRepoIds: [],
       error: null,
+      notice: null,
       hadOAuthParams: false,
     };
-  });
+  }
 
-  const [githubData] = useState<OAuthGitHubData | null>(initialOAuthState.githubData);
-  const [linkedRepoIds, setLinkedRepoIds] = useState<number[]>(
-    initialOAuthState.linkedRepoIds
+  const url = new URL(window.location.href);
+  const oauthStatus = url.searchParams.get("github_oauth");
+  const oauthError = url.searchParams.get("github_error");
+  const oauthData = url.searchParams.get("github_data");
+
+  if (oauthStatus === "success" && oauthData) {
+    try {
+      const decoded = decodeOAuthPayload(oauthData);
+      const persisted = readLinkedRepoMap()[decoded.username] ?? [];
+      const validPersisted = persisted.filter((repoId) =>
+        decoded.repos.some((repo) => repo.id === repoId)
+      );
+
+      return {
+        githubData: decoded,
+        linkedRepoIds: validPersisted,
+        error: null,
+        notice: `Connected as @${decoded.username}`,
+        hadOAuthParams: true,
+      };
+    } catch {
+      return {
+        githubData: null,
+        linkedRepoIds: [],
+        error: "GitHub callback data could not be parsed. Please reconnect.",
+        notice: null,
+        hadOAuthParams: true,
+      };
+    }
+  }
+
+  if (oauthStatus === "error") {
+    return {
+      githubData: null,
+      linkedRepoIds: [],
+      error: oauthError || "GitHub authentication failed. Please try again.",
+      notice: null,
+      hadOAuthParams: true,
+    };
+  }
+
+  const persistedProfile = readPersistedGitHubData();
+  if (persistedProfile) {
+    const linked = (readLinkedRepoMap()[persistedProfile.username] ?? []).filter((repoId) =>
+      persistedProfile.repos.some((repo) => repo.id === repoId)
+    );
+
+    return {
+      githubData: persistedProfile,
+      linkedRepoIds: linked,
+      error: null,
+      notice: `Connected as @${persistedProfile.username}`,
+      hadOAuthParams: false,
+    };
+  }
+
+  return {
+    githubData: null,
+    linkedRepoIds: [],
+    error: null,
+    notice: null,
+    hadOAuthParams: false,
+  };
+}
+
+export function GitHubConnectCard() {
+  const [initialState] = useState<InitialGitHubState>(deriveInitialState);
+  const [githubData, setGithubData] = useState<OAuthGitHubData | null>(
+    initialState.githubData
   );
+  const [linkedRepoIds, setLinkedRepoIds] = useState<number[]>(initialState.linkedRepoIds);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [error] = useState<string | null>(initialOAuthState.error);
+  const [error, setError] = useState<string | null>(initialState.error);
+  const [notice, setNotice] = useState<string | null>(initialState.notice);
 
   const linkedRepos = useMemo(() => {
     if (!githubData) return [];
@@ -118,21 +173,36 @@ export function GitHubConnectCard() {
   }, [githubData, linkedRepoIds]);
 
   useEffect(() => {
-    if (!initialOAuthState.hadOAuthParams || typeof window === "undefined") return;
+    writePersistedGitHubData(githubData);
+  }, [githubData]);
+
+  useEffect(() => {
+    if (!initialState.hadOAuthParams || typeof window === "undefined") return;
 
     const url = new URL(window.location.href);
     url.searchParams.delete("github_oauth");
     url.searchParams.delete("github_error");
     url.searchParams.delete("github_data");
     window.history.replaceState({}, "", url.toString());
-  }, [initialOAuthState.hadOAuthParams]);
+  }, [initialState.hadOAuthParams]);
 
   function startOAuthFlow() {
     if (typeof window === "undefined") return;
     setIsRedirecting(true);
+    setError(null);
+    setNotice(null);
+
     const returnTo = `${window.location.origin}/profile`;
     const authUrl = buildApiUrl(`/api/github/auth?redirect=${encodeURIComponent(returnTo)}`);
     window.location.href = authUrl;
+  }
+
+  function disconnectGithub() {
+    setGithubData(null);
+    setLinkedRepoIds([]);
+    setNotice("GitHub disconnected.");
+    setError(null);
+    writePersistedGitHubData(null);
   }
 
   function toggleLinkedRepo(repoId: number) {
@@ -165,12 +235,18 @@ export function GitHubConnectCard() {
             ? "Reconnect GitHub"
             : "Connect GitHub"}
         </Button>
+        {githubData ? (
+          <Button variant="outline" onClick={disconnectGithub}>
+            Disconnect GitHub
+          </Button>
+        ) : null}
         <p className="text-sm text-foreground/70">
           OAuth flow only uses public GitHub account data.
         </p>
       </div>
 
-      {error ? <p className="mt-3 text-sm text-rose-700">{error}</p> : null}
+      {notice ? <p className="mt-3 text-sm text-foreground/70">{notice}</p> : null}
+      {error ? <p className="mt-2 text-sm text-rose-700">{error}</p> : null}
 
       {!githubData ? (
         <div className="mt-4 rounded-2xl bg-muted/60 p-4 ring-1 ring-border">
@@ -193,10 +269,11 @@ export function GitHubConnectCard() {
                 <div className="h-14 w-14 rounded-full bg-muted ring-1 ring-border" />
               )}
               <div className="min-w-0">
-                <p className="text-base font-semibold">
-                  {githubData.name || githubData.username}
-                </p>
+                <p className="text-base font-semibold">{githubData.name || githubData.username}</p>
                 <p className="text-sm text-foreground/70">@{githubData.username}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <StatusBadge label={`${githubData.repos.length} public repos`} />
+                </div>
                 <a
                   href={githubData.profileUrl}
                   target="_blank"
