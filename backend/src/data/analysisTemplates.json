@@ -1,0 +1,98 @@
+[
+  {
+    "id": "phone",
+    "keywords": ["phone", "smartphone", "mobile", "battery", "lithium"],
+    "material": "Mixed electronics (PCB + Lithium battery)",
+    "confidence": 92,
+    "risk": "Medium",
+    "sustainabilityScore": 84,
+    "ideas": [
+      {
+        "id": "idea-1",
+        "title": "Desk info display (clock + dashboard)",
+        "difficulty": "Easy",
+        "estimatedCost": "Low",
+        "description": "Reuse the screen for a simple always-on dashboard."
+      },
+      {
+        "id": "idea-2",
+        "title": "DIY security camera (Wi‑Fi)",
+        "difficulty": "Medium",
+        "estimatedCost": "Low",
+        "description": "Turn the camera into a basic monitoring setup."
+      },
+      {
+        "id": "idea-3",
+        "title": "Retro music player",
+        "difficulty": "Easy",
+        "estimatedCost": "Low",
+        "description": "Offline playlists with a minimal launcher."
+      }
+    ],
+    "steps": [
+      "Power off the device and remove the SIM tray.",
+      "Inspect the casing and avoid puncturing the battery.",
+      "Wipe data, reset the OS, and install a single-purpose setup.",
+      "Mount the device safely and route power neatly."
+    ]
+  },
+  {
+    "id": "router",
+    "keywords": ["router", "wifi", "modem", "network"],
+    "material": "Printed circuit board (network hardware)",
+    "confidence": 88,
+    "risk": "Low",
+    "sustainabilityScore": 79,
+    "ideas": [
+      {
+        "id": "idea-1",
+        "title": "Screws + parts sorting kit",
+        "difficulty": "Easy",
+        "estimatedCost": "Low",
+        "description": "Harvest screws, spacers, and small parts into labeled containers."
+      },
+      {
+        "id": "idea-2",
+        "title": "DIY network status light",
+        "difficulty": "Medium",
+        "estimatedCost": "Low",
+        "description": "Repurpose indicator LEDs with a microcontroller later."
+      }
+    ],
+    "steps": [
+      "Unplug and discharge; wait a few minutes before opening.",
+      "Separate the enclosure, board, and antennas carefully.",
+      "Sort reusable components and label parts."
+    ]
+  },
+  {
+    "id": "default",
+    "keywords": [""],
+    "material": "Electronic components (mixed)",
+    "confidence": 80,
+    "risk": "Medium",
+    "sustainabilityScore": 76,
+    "ideas": [
+      {
+        "id": "idea-1",
+        "title": "Parts salvage + organizer",
+        "difficulty": "Easy",
+        "estimatedCost": "Low",
+        "description": "Sort reusable parts into a labeled kit for future builds."
+      },
+      {
+        "id": "idea-2",
+        "title": "DIY learning board",
+        "difficulty": "Medium",
+        "estimatedCost": "Low",
+        "description": "Use components to learn basic electronics safely."
+      }
+    ],
+    "steps": [
+      "Sort reusable components carefully.",
+      "Separate hazardous parts safely.",
+      "Clean and label parts for reuse.",
+      "Choose a simple beginner project and proceed step-by-step."
+    ]
+  }
+]

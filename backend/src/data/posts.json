@@ -1,0 +1,35 @@
+[
+  {
+    "id": "p1",
+    "userName": "Aanya",
+    "avatarInitials": "AA",
+    "imageSrc": "/mock/ewaste-1.svg",
+    "caption": "Old router → a tiny home-lab monitor. Cleaned the board today.",
+    "likes": 128,
+    "comments": 14,
+    "progressPct": 45,
+    "createdAt": "2026-04-12T15:30:00.000Z"
+  },
+  {
+    "id": "p2",
+    "userName": "Dev",
+    "avatarInitials": "DK",
+    "imageSrc": "/mock/ewaste-2.svg",
+    "caption": "Upcycling a phone into a desk clock. Next: mount + cable routing.",
+    "likes": 342,
+    "comments": 37,
+    "progressPct": 70,
+    "createdAt": "2026-04-11T10:15:00.000Z"
+  },
+  {
+    "id": "p3",
+    "userName": "Mina",
+    "avatarInitials": "MS",
+    "imageSrc": "/mock/ewaste-3.svg",
+    "caption": "Laptop fan salvage. Testing airflow before building the enclosure.",
+    "likes": 89,
+    "comments": 9,
+    "progressPct": 25,
+    "createdAt": "2026-04-09T08:00:00.000Z"
+  }
+]
