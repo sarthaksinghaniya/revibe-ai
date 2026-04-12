@@ -1,22 +1,55 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PostCard } from "@/components/cards/PostCard";
-import { mockPosts } from "@/data/mockCommunity";
 import { Card } from "@/components/ui/Card";
+import { getPosts, type CommunityPost } from "@/lib/api";
 
 export default function CommunityPage() {
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const response = await getPosts();
+        setPosts(response.data);
+      } catch (error) {
+        console.error("[community] GET /api/posts failed:", error);
+        setPosts([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void fetchPosts();
+  }, []);
+
   return (
     <PageShell>
       <PageHeader
         title="Community"
-        description="A simple, Instagram-inspired feed for progress updates. Posts are mock data for now."
+        description="A simple, Instagram-inspired feed for progress updates."
       />
 
       <div className="mt-8 grid gap-6 lg:grid-cols-12">
         <div className="grid gap-4 lg:col-span-7">
-          {mockPosts.map((post) => (
-            <PostCard key={post.id} post={post} />
-          ))}
+          {isLoading ? (
+            <Card className="p-6">
+              <p className="text-sm text-foreground/70">Loading community posts...</p>
+            </Card>
+          ) : posts.length === 0 ? (
+            <Card className="p-6">
+              <p className="text-sm text-foreground/70">
+                No community posts yet. Be the first to share a project update.
+              </p>
+            </Card>
+          ) : (
+            posts.map((post) => <PostCard key={post.id} post={post} />)
+          )}
         </div>
 
         <div className="lg:col-span-5">

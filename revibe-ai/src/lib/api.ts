@@ -94,6 +94,27 @@ export const analyzeItem = (payload: AnalyzeRequest): Promise<AnalyzeResponse> =
   return apiPostJson<AnalyzeResponse>("/api/analyze", payload);
 };
 
+export type CommunityPost = {
+  id: string;
+  userName: string;
+  avatarInitials: string;
+  imageSrc: string;
+  caption: string;
+  likes: number;
+  comments: number;
+  progressPct: number;
+  createdAt: string;
+};
+
+export type GetPostsResponse = {
+  success: boolean;
+  data: CommunityPost[];
+};
+
+export const getPosts = (): Promise<GetPostsResponse> => {
+  return apiGetJson<GetPostsResponse>("/api/posts");
+};
+
 export const logApiBaseUrl = (): void => {
   console.log("[api] NEXT_PUBLIC_API_BASE_URL:", API_BASE_URL || "(not set)");
 };
