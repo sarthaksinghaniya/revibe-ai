@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { Button, buttonStyles } from "@/components/ui/Button";
 import { RiskBadge, StatusBadge } from "@/components/ui/StatusBadge";
 import { Icon } from "@/components/ui/Icon";
+import { StateCard } from "@/components/ui/StateCard";
 import { IdeaCard } from "@/components/cards/IdeaCard";
 import { ResourceList } from "@/components/map/ResourceList";
 import { ResourceMap } from "@/components/map/ResourceMap";
@@ -147,6 +148,11 @@ export default function ResultsPage() {
           title="Analysis result"
           description="Loading latest analysis result..."
         />
+        <StateCard
+          className="mt-8"
+          title="Loading analysis"
+          description="Preparing your latest AI recommendation output."
+        />
       </PageShell>
     );
   }
@@ -163,9 +169,12 @@ export default function ResultsPage() {
             </Link>
           }
         />
-        <Card className="mt-8 p-6">
-          <p className="text-sm text-rose-700">{loadError}</p>
-        </Card>
+        <StateCard
+          className="mt-8"
+          title="Could not load analysis"
+          description={loadError}
+          tone="error"
+        />
       </PageShell>
     );
   }
@@ -279,11 +288,10 @@ export default function ResultsPage() {
               ))}
             </div>
           ) : (
-            <Card className="p-6">
-              <p className="text-sm text-foreground/70">
-                No reuse ideas returned from backend for this analysis.
-              </p>
-            </Card>
+            <StateCard
+              title="No ideas returned"
+              description="The backend response did not include project ideas for this item. Try another upload."
+            />
           )}
         </div>
       </div>
@@ -304,15 +312,15 @@ export default function ResultsPage() {
               variant="neutral"
             />
           </div>
-          <div className="mt-5 grid gap-4 xl:grid-cols-12 xl:items-start">
-            <div className="xl:col-span-7">
+          <div className="mt-5 grid gap-4 lg:grid-cols-12 lg:items-start">
+            <div className="lg:col-span-7">
               <ResourceMap
                 resources={resources}
                 activeResourceId={activeResourceId}
                 onSelectResource={setActiveResourceId}
               />
             </div>
-            <div className="xl:col-span-5">
+            <div className="lg:col-span-5">
               <ResourceList
                 resources={resources}
                 activeResourceId={activeResourceId}

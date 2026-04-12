@@ -7,7 +7,7 @@ export default function UploadPage() {
     <PageShell>
       <PageHeader
         title="Upload e-waste"
-        description="Add a photo to get reuse ideas and project guidance. This is a mock UI step—analysis is static for now."
+        description="Add a photo to get reuse ideas and project guidance powered by the backend analysis flow."
       />
       <div className="mt-8">
         <UploadBox />

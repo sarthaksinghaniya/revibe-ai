@@ -17,7 +17,7 @@ export function FeatureCard({
 }) {
   return (
     <Link href={href} className="group block">
-      <Card className="p-6 transition-transform duration-200 ease-out will-change-transform group-hover:-translate-y-0.5">
+      <Card className="p-6 transition-transform duration-200 ease-out will-change-transform group-hover:-translate-y-0.5 group-hover:shadow-[var(--shadow-soft)]">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold">{title}</p>

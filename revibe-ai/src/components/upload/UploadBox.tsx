@@ -38,7 +38,10 @@ export function UploadBox() {
   function onFiles(files: FileList | null) {
     const next = files?.[0] ?? null;
     if (!next) return;
-    if (!ACCEPTED.includes(next.type)) return;
+    if (!ACCEPTED.includes(next.type)) {
+      setAnalyzeError("Please upload PNG, JPG, WebP, or HEIC image files only.");
+      return;
+    }
     setFile(next);
     setAnalyzeError(null);
   }
@@ -86,7 +89,7 @@ export function UploadBox() {
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4" aria-busy={isAnalyzing}>
       <Card
         className={cn(
           "relative overflow-hidden p-6 sm:p-8",
@@ -144,6 +147,7 @@ export function UploadBox() {
           type="file"
           accept="image/*"
           className="sr-only"
+          aria-label="Upload an e-waste image"
           onChange={(e) => onFiles(e.target.files)}
         />
 
@@ -176,7 +180,9 @@ export function UploadBox() {
           </div>
         </div>
         {analyzeError ? (
-          <p className="mt-3 text-sm text-rose-700">{analyzeError}</p>
+          <p className="mt-3 text-sm text-rose-700" role="alert">
+            {analyzeError}
+          </p>
         ) : null}
 
         <div className="mt-4">

@@ -245,8 +245,16 @@ export function GitHubConnectCard() {
         </p>
       </div>
 
-      {notice ? <p className="mt-3 text-sm text-foreground/70">{notice}</p> : null}
-      {error ? <p className="mt-2 text-sm text-rose-700">{error}</p> : null}
+      {notice ? (
+        <p className="mt-3 text-sm text-foreground/70" aria-live="polite">
+          {notice}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="mt-2 text-sm text-rose-700" role="alert">
+          {error}
+        </p>
+      ) : null}
 
       {!githubData ? (
         <div className="mt-4 rounded-2xl bg-muted/60 p-4 ring-1 ring-border">

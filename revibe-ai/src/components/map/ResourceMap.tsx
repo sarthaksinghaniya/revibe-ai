@@ -10,7 +10,7 @@ import type { MapResource, ResourceType } from "@/data/mockResources";
 function InlineMapLoading() {
   return (
     <div className="h-full w-full grid place-items-center bg-muted/50">
-      <p className="text-sm text-foreground/60">Loading map preview...</p>
+      <p className="text-sm text-foreground/60">Loading nearby resource map...</p>
     </div>
   );
 }
@@ -92,7 +92,7 @@ export function ResourceMap({
     return (
       <div
         className={cn(
-          "h-64 w-full rounded-2xl bg-muted/40 ring-1 ring-border sm:h-72 lg:h-80",
+          "h-[16.5rem] w-full rounded-2xl bg-muted/40 ring-1 ring-border sm:h-[19rem] lg:h-[23rem]",
           "grid place-items-center p-6 text-center",
           className
         )}
@@ -110,7 +110,7 @@ export function ResourceMap({
   return (
     <div
       className={cn(
-        "revibe-resource-map h-64 w-full overflow-hidden rounded-2xl ring-1 ring-border sm:h-72 lg:h-80",
+        "revibe-resource-map h-[16.5rem] w-full overflow-hidden rounded-2xl ring-1 ring-border sm:h-[19rem] lg:h-[23rem]",
         className
       )}
     >

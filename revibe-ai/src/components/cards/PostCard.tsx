@@ -6,7 +6,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 
 export function PostCard({ post }: { post: CommunityPost }) {
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
       <div className="p-5">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -30,7 +30,7 @@ export function PostCard({ post }: { post: CommunityPost }) {
       <div className="relative aspect-[3/2] w-full bg-muted">
         <Image
           src={post.imageSrc}
-          alt="Uploaded e-waste"
+          alt={`${post.userName} project update`}
           fill
           className="object-cover"
           sizes="(max-width: 768px) 100vw, 720px"

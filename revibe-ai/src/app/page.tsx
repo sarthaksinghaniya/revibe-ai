@@ -50,7 +50,7 @@ export default function Home() {
             </Link>
           </div>
           <p className="mt-3 text-sm text-foreground/60">
-            Mock flow: upload → results → community. No AI yet.
+            Live flow: upload → AI results → community.
           </p>
         </div>
 

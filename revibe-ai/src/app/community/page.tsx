@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { PostCard } from "@/components/cards/PostCard";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { StateCard } from "@/components/ui/StateCard";
 import { createPost, getPosts, type CommunityPost } from "@/lib/api";
 
 export default function CommunityPage() {
@@ -90,18 +91,18 @@ export default function CommunityPage() {
         description="A simple, Instagram-inspired feed for progress updates."
       />
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-12">
+      <div className="mt-8 grid gap-6 lg:grid-cols-12" aria-busy={isLoading || isSubmitting}>
         <div className="grid gap-4 lg:col-span-7">
           {isLoading ? (
-            <Card className="p-6">
-              <p className="text-sm text-foreground/70">Loading community posts...</p>
-            </Card>
+            <StateCard
+              title="Loading posts"
+              description="Pulling latest community updates from the backend feed."
+            />
           ) : posts.length === 0 ? (
-            <Card className="p-6">
-              <p className="text-sm text-foreground/70">
-                No community posts yet. Be the first to share a project update.
-              </p>
-            </Card>
+            <StateCard
+              title="No posts yet"
+              description="Be the first to share a progress update with the community."
+            />
           ) : (
             posts.map((post) => <PostCard key={post.id} post={post} />)
           )}
@@ -112,26 +113,45 @@ export default function CommunityPage() {
             <Card className="p-6">
               <p className="text-sm font-semibold">Share your progress</p>
               <form className="mt-3 grid gap-3" onSubmit={onSubmit}>
+                <label htmlFor="post-caption" className="text-xs font-medium text-foreground/70">
+                  Caption
+                </label>
                 <textarea
+                  id="post-caption"
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
                   placeholder="Write a quick caption..."
                   className="min-h-24 rounded-2xl bg-muted/60 p-3 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-describedby="post-caption-help"
                 />
+                <p id="post-caption-help" className="-mt-1 text-xs text-foreground/60">
+                  Keep it practical and beginner-friendly.
+                </p>
+                <label htmlFor="post-progress" className="text-xs font-medium text-foreground/70">
+                  Progress (optional)
+                </label>
                 <input
+                  id="post-progress"
                   value={progress}
                   onChange={(e) => setProgress(e.target.value)}
                   placeholder="Progress % (optional)"
                   className="h-11 rounded-full bg-card px-4 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  inputMode="numeric"
                 />
+                <label htmlFor="post-image-url" className="text-xs font-medium text-foreground/70">
+                  Image URL (optional)
+                </label>
                 <input
+                  id="post-image-url"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
                   placeholder="Image URL (optional)"
                   className="h-11 rounded-full bg-card px-4 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 {submitError ? (
-                  <p className="text-sm text-rose-700">{submitError}</p>
+                  <p className="text-sm text-rose-700" role="alert">
+                    {submitError}
+                  </p>
                 ) : null}
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? "Posting..." : "Create post"}

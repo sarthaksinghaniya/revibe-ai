@@ -50,10 +50,26 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   text-rendering: optimizeLegibility;
+  line-height: 1.5;
 }
 
 ::selection {
   background: color-mix(in srgb, var(--primary) 25%, white);
+}
+
+a {
+  transition: color 160ms var(--ease-out-quint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .revibe-resource-map .leaflet-container {
@@ -68,4 +84,8 @@ body {
 
 .revibe-resource-map .leaflet-popup-content {
   margin: 12px 14px;
+}
+
+.revibe-resource-map .leaflet-popup-tip {
+  box-shadow: none;
 }

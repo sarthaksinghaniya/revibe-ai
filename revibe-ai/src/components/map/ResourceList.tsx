@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
+import { StateCard } from "@/components/ui/StateCard";
 import { cn } from "@/lib/cn";
 import type { MapResource } from "@/data/mockResources";
 
@@ -17,17 +18,15 @@ export function ResourceList({
 }: ResourceListProps) {
   if (resources.length === 0) {
     return (
-      <Card className="rounded-2xl p-5">
-        <p className="text-sm font-medium">No nearby resources yet</p>
-        <p className="mt-1 text-sm text-foreground/70">
-          Resource cards will appear here when marker data is available.
-        </p>
-      </Card>
+      <StateCard
+        title="No nearby resources yet"
+        description="Resource cards will appear here when marker data is available."
+      />
     );
   }
 
   return (
-    <div className="grid max-h-[22.5rem] gap-3 overflow-auto pr-1 lg:max-h-[20rem]">
+    <div className="grid max-h-[22.5rem] gap-3 overflow-auto pr-1 lg:max-h-[23rem]">
       {resources.map((resource) => {
         const isActive = activeResourceId === resource.id;
 
@@ -36,12 +35,14 @@ export function ResourceList({
             key={resource.id}
             type="button"
             onClick={() => onSelectResource(resource.id)}
-            className="rounded-2xl text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="rounded-2xl text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            aria-pressed={isActive}
+            aria-label={`Focus map on ${resource.name}`}
           >
             <Card
               className={cn(
                 "rounded-2xl p-4 transition-colors",
-                "ring-1 ring-border hover:bg-muted/50",
+                "ring-1 ring-border hover:bg-muted/50 hover:-translate-y-0.5",
                 isActive ? "bg-primary/5 ring-primary/30" : ""
               )}
             >
