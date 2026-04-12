@@ -1,16 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PostCard } from "@/components/cards/PostCard";
 import { Card } from "@/components/ui/Card";
-import { getPosts, type CommunityPost } from "@/lib/api";
+import { Button } from "@/components/ui/Button";
+import { createPost, getPosts, type CommunityPost } from "@/lib/api";
 
 export default function CommunityPage() {
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [caption, setCaption] = useState("");
+  const [progress, setProgress] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -27,6 +33,55 @@ export default function CommunityPage() {
 
     void fetchPosts();
   }, []);
+
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    const trimmedCaption = caption.trim();
+    const trimmedImageUrl = imageUrl.trim();
+    const trimmedProgress = progress.trim();
+
+    if (trimmedCaption.length < 2) {
+      setSubmitError("Caption must be at least 2 characters.");
+      return;
+    }
+
+    let progressPct: number | undefined;
+    if (trimmedProgress) {
+      const parsed = Number(trimmedProgress);
+      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+        setSubmitError("Progress must be a number between 0 and 100.");
+        return;
+      }
+      progressPct = Math.round(parsed);
+    }
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const response = await createPost({
+        userName: "Guest Builder",
+        caption: trimmedCaption,
+        imageSrc: trimmedImageUrl || undefined,
+        progressPct,
+      });
+
+      setPosts((prev) => [response.data, ...prev]);
+      setCaption("");
+      setProgress("");
+      setImageUrl("");
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Could not create post right now. Please try again.",
+      );
+      console.error("[community] POST /api/posts failed:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <PageShell>
@@ -56,16 +111,32 @@ export default function CommunityPage() {
           <div className="sticky top-20 grid gap-4">
             <Card className="p-6">
               <p className="text-sm font-semibold">Share your progress</p>
-              <p className="mt-2 text-sm leading-6 text-foreground/70">
-                This panel will become the “create post” flow later. For now, it
-                stays as a clean placeholder.
-              </p>
-              <div className="mt-4 rounded-2xl bg-muted/60 p-4 ring-1 ring-border">
-                <p className="text-xs text-foreground/60">Coming next</p>
-                <p className="mt-1 text-sm font-medium">
-                  Upload → Analysis → Start Project → Post update
-                </p>
-              </div>
+              <form className="mt-3 grid gap-3" onSubmit={onSubmit}>
+                <textarea
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  placeholder="Write a quick caption..."
+                  className="min-h-24 rounded-2xl bg-muted/60 p-3 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <input
+                  value={progress}
+                  onChange={(e) => setProgress(e.target.value)}
+                  placeholder="Progress % (optional)"
+                  className="h-11 rounded-full bg-card px-4 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <input
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="Image URL (optional)"
+                  className="h-11 rounded-full bg-card px-4 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                {submitError ? (
+                  <p className="text-sm text-rose-700">{submitError}</p>
+                ) : null}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Posting..." : "Create post"}
+                </Button>
+              </form>
             </Card>
             <Card className="p-6">
               <p className="text-sm font-semibold">Community guidelines</p>

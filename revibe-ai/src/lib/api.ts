@@ -115,6 +115,24 @@ export const getPosts = (): Promise<GetPostsResponse> => {
   return apiGetJson<GetPostsResponse>("/api/posts");
 };
 
+export type CreatePostRequest = {
+  userName: string;
+  caption: string;
+  imageSrc?: string;
+  progressPct?: number;
+};
+
+export type CreatePostResponse = {
+  success: boolean;
+  data: CommunityPost;
+};
+
+export const createPost = (
+  payload: CreatePostRequest
+): Promise<CreatePostResponse> => {
+  return apiPostJson<CreatePostResponse>("/api/posts", payload);
+};
+
 export const logApiBaseUrl = (): void => {
   console.log("[api] NEXT_PUBLIC_API_BASE_URL:", API_BASE_URL || "(not set)");
 };
