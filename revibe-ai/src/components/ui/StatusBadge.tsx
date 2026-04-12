@@ -4,9 +4,9 @@ import type { RiskLevel } from "@/data/mockAnalysis";
 type Variant = "neutral" | "low" | "medium" | "high";
 
 const variants: Record<Variant, string> = {
-  neutral: "bg-muted text-foreground/80 ring-border",
-  low: "bg-emerald-50 text-emerald-900 ring-emerald-200",
-  medium: "bg-amber-50 text-amber-900 ring-amber-200",
+  neutral: "bg-muted text-muted-foreground ring-border",
+  low: "bg-green-50 text-green-800 ring-green-200",
+  medium: "bg-amber-50 text-amber-800 ring-amber-200",
   high: "bg-rose-50 text-rose-900 ring-rose-200",
 };
 
