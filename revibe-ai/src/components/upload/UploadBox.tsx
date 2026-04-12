@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/lib/cn";
+import { analyzeItem } from "@/lib/api";
+import { saveLatestAnalysis } from "@/lib/analysisSession";
 
 const ACCEPTED = ["image/png", "image/jpeg", "image/webp", "image/heic"];
 
@@ -15,6 +17,8 @@ export function UploadBox() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
 
   const previewUrl = useMemo(() => {
     if (!file) return null;
@@ -36,15 +40,49 @@ export function UploadBox() {
     if (!next) return;
     if (!ACCEPTED.includes(next.type)) return;
     setFile(next);
+    setAnalyzeError(null);
   }
 
   function clear() {
     setFile(null);
+    setAnalyzeError(null);
     if (inputRef.current) inputRef.current.value = "";
   }
 
-  function analyze() {
-    router.push("/results");
+  async function analyze() {
+    if (!file) {
+      setAnalyzeError("Please select a file before analyzing.");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalyzeError(null);
+
+    const itemName = file.name.replace(/\.[^/.]+$/, "").trim() || "Unknown item";
+
+    try {
+      const response = await analyzeItem({
+        itemName,
+        notes: "Mock upload flow payload from frontend",
+      });
+
+      saveLatestAnalysis({
+        itemName,
+        result: response.data,
+        createdAt: new Date().toISOString(),
+      });
+
+      router.push("/results");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not analyze right now. Please try again.";
+      setAnalyzeError(message);
+      console.error("[analyze] POST /api/analyze failed:", error);
+    } finally {
+      setIsAnalyzing(false);
+    }
   }
 
   return (
@@ -129,12 +167,17 @@ export function UploadBox() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <Button variant="outline" onClick={clear} disabled={!file}>
+            <Button variant="outline" onClick={clear} disabled={!file || isAnalyzing}>
               Clear
             </Button>
-            <Button onClick={analyze}>Analyze</Button>
+            <Button onClick={analyze} disabled={isAnalyzing}>
+              {isAnalyzing ? "Analyzing..." : "Analyze"}
+            </Button>
           </div>
         </div>
+        {analyzeError ? (
+          <p className="mt-3 text-sm text-rose-700">{analyzeError}</p>
+        ) : null}
 
         <div className="mt-4">
           {previewUrl ? (

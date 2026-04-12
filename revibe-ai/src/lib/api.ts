@@ -31,6 +31,28 @@ export const apiGetJson = async <T>(path: string, init?: RequestInit): Promise<T
   return (await response.json()) as T;
 };
 
+export const apiPostJson = async <TResponse>(
+  path: string,
+  body: unknown,
+  init?: RequestInit
+): Promise<TResponse> => {
+  const response = await apiFetch(path, {
+    method: "POST",
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+  }
+
+  return (await response.json()) as TResponse;
+};
+
 export type HealthResponse = {
   success: boolean;
   data: {
@@ -41,6 +63,35 @@ export type HealthResponse = {
 
 export const getHealth = (): Promise<HealthResponse> => {
   return apiGetJson<HealthResponse>("/api/health");
+};
+
+export type AnalyzeRequest = {
+  itemName: string;
+  notes?: string;
+};
+
+export type AnalyzeIdea = {
+  id: string;
+  title: string;
+  difficulty: string;
+  estimatedCost: string;
+  description: string;
+};
+
+export type AnalyzeResponse = {
+  success: boolean;
+  data: {
+    material: string;
+    confidence: number;
+    risk: string;
+    sustainabilityScore: number;
+    ideas: AnalyzeIdea[];
+    steps: string[];
+  };
+};
+
+export const analyzeItem = (payload: AnalyzeRequest): Promise<AnalyzeResponse> => {
+  return apiPostJson<AnalyzeResponse>("/api/analyze", payload);
 };
 
 export const logApiBaseUrl = (): void => {
