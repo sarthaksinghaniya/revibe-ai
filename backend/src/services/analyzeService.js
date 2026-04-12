@@ -1,6 +1,7 @@
 import { readJsonFile } from "../utils/jsonStore.js";
 import { paths } from "../utils/paths.js";
 import { generateAnalysisFromGroq } from "./ai.service.js";
+import { logInfo, logWarn } from "../utils/logger.js";
 
 function normalize(text) {
   return String(text ?? "").toLowerCase();
@@ -34,18 +35,35 @@ export async function pickAnalysisTemplate({ itemName, notes }) {
   };
 }
 
-export async function generateAnalysis({ itemName, notes }) {
+export async function generateAnalysis({ itemName, notes, requestId }) {
   const fallback = await pickAnalysisTemplate({ itemName, notes });
 
   try {
-    return await generateAnalysisFromGroq({
+    logInfo("analyze.groq.call.started", {
+      requestId,
+      itemNameLength: String(itemName ?? "").trim().length,
+      notesLength: String(notes ?? "").trim().length,
+    });
+
+    const generated = await generateAnalysisFromGroq({
       itemName,
       notes,
       fallback,
+      requestId,
     });
+
+    logInfo("analyze.groq.call.succeeded", {
+      requestId,
+      ideaCount: Array.isArray(generated.ideas) ? generated.ideas.length : 0,
+      stepCount: Array.isArray(generated.steps) ? generated.steps.length : 0,
+    });
+
+    return generated;
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn("[analyze] Groq failed, using fallback template:", error?.message ?? error);
+    logWarn("analyze.groq.call.failed_using_fallback", {
+      requestId,
+      reason: error?.message ?? "Unknown error",
+    });
     return fallback;
   }
 }

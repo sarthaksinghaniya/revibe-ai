@@ -1,4 +1,5 @@
 import http from "node:http";
+import { randomUUID } from "node:crypto";
 
 import express from "express";
 import cors from "cors";
@@ -16,6 +17,12 @@ app.use(
   }),
 );
 app.use(express.json({ limit: "2mb" }));
+app.use((req, res, next) => {
+  const requestId = randomUUID();
+  req.requestId = requestId;
+  res.setHeader("x-request-id", requestId);
+  next();
+});
 
 app.use("/api", apiRouter);
 

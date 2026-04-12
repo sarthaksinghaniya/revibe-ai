@@ -1,6 +1,7 @@
 import Groq from "groq-sdk";
 
 import { env } from "../config/env.js";
+import { logInfo, logWarn } from "../utils/logger.js";
 
 let groqClient = null;
 const MAX_IDEAS = 4;
@@ -73,25 +74,34 @@ function normalizeDifficulty(difficulty) {
   return "Medium";
 }
 
-function parseJsonFromModel(text) {
+function parseJsonFromModel(text, { requestId } = {}) {
   const trimmed = String(text ?? "").trim();
   if (!trimmed) throw new Error("Groq returned empty content.");
 
   try {
     return JSON.parse(trimmed);
   } catch {
-    // Try fenced JSON: ```json ... ```
-    const fenced = trimmed.match(/```json\s*([\s\S]*?)\s*```/i);
-    if (fenced?.[1]) return JSON.parse(fenced[1]);
+    try {
+      // Try fenced JSON: ```json ... ```
+      const fenced = trimmed.match(/```json\s*([\s\S]*?)\s*```/i);
+      if (fenced?.[1]) return JSON.parse(fenced[1]);
 
-    // Try extracting the first JSON object block
-    const firstBrace = trimmed.indexOf("{");
-    const lastBrace = trimmed.lastIndexOf("}");
-    if (firstBrace >= 0 && lastBrace > firstBrace) {
-      const maybeJson = trimmed.slice(firstBrace, lastBrace + 1);
-      return JSON.parse(maybeJson);
+      // Try extracting the first JSON object block
+      const firstBrace = trimmed.indexOf("{");
+      const lastBrace = trimmed.lastIndexOf("}");
+      if (firstBrace >= 0 && lastBrace > firstBrace) {
+        const maybeJson = trimmed.slice(firstBrace, lastBrace + 1);
+        return JSON.parse(maybeJson);
+      }
+    } catch {
+      // no-op; fall through to unified parse error logging below
     }
 
+    logWarn("analyze.groq.parse.failed", {
+      requestId,
+      reason: "Groq output was not valid JSON",
+      contentPreview: trimmed.slice(0, 200),
+    });
     throw new Error("Could not parse JSON from Groq response.");
   }
 }
@@ -185,7 +195,12 @@ function sanitizeAnalysisPayload(raw, fallback) {
   };
 }
 
-export async function generateAnalysisFromGroq({ itemName, notes, fallback }) {
+export async function generateAnalysisFromGroq({
+  itemName,
+  notes,
+  fallback,
+  requestId,
+}) {
   const client = getGroqClient();
 
   const systemPrompt = [
@@ -222,22 +237,38 @@ export async function generateAnalysisFromGroq({ itemName, notes, fallback }) {
     `Notes: ${notes || "None"}`,
   ].join("\n");
 
-  const completion = await client.chat.completions.create({
-    model: "llama-3.1-8b-instant",
-    temperature: 0.2,
-    messages: [
-      {
-        role: "system",
-        content: systemPrompt,
-      },
-      {
-        role: "user",
-        content: userPrompt,
-      },
-    ],
-  });
+  try {
+    const completion = await client.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      temperature: 0.2,
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt,
+        },
+        {
+          role: "user",
+          content: userPrompt,
+        },
+      ],
+    });
 
-  const content = completion.choices?.[0]?.message?.content ?? "";
-  const parsed = parseJsonFromModel(content);
-  return sanitizeAnalysisPayload(parsed, fallback);
+    const content = completion.choices?.[0]?.message?.content ?? "";
+    const parsed = parseJsonFromModel(content, { requestId });
+    const sanitized = sanitizeAnalysisPayload(parsed, fallback);
+
+    logInfo("analyze.groq.parse.succeeded", {
+      requestId,
+      model: completion.model,
+      rawChars: String(content).length,
+    });
+
+    return sanitized;
+  } catch (error) {
+    logWarn("analyze.groq.request_or_parse.error", {
+      requestId,
+      reason: error?.message ?? "Unknown error",
+    });
+    throw error;
+  }
 }
