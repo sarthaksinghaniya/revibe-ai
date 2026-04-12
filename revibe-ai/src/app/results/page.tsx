@@ -262,7 +262,7 @@ export default function ResultsPage() {
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Button size="lg" disabled>
-              Start Project (next)
+              Start Project (coming soon)
             </Button>
             <Link
               href="/community"
@@ -272,7 +272,7 @@ export default function ResultsPage() {
             </Link>
           </div>
           <p className="mt-3 text-xs text-foreground/60">
-            Start Project is intentionally disabled until Step 3.
+            Guided project tracking will be enabled in a future release.
           </p>
         </Card>
 
@@ -303,12 +303,11 @@ export default function ResultsPage() {
               <h3 className="text-sm font-semibold">Nearby Resources</h3>
               <p className="mt-2 text-sm leading-6 text-foreground/70">
                 Quickly scan nearby scrap shops, recycling points, and useful
-                material spots. This is a map preview; live resource locations come
-                in the next step.
+                material spots. This section uses curated sample locations for MVP demo flow.
               </p>
             </div>
             <StatusBadge
-              label={resources.length > 0 ? `${resources.length} mock points` : "Map later"}
+              label={resources.length > 0 ? `${resources.length} sample points` : "Map unavailable"}
               variant="neutral"
             />
           </div>

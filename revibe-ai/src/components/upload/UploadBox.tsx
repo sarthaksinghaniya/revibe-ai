@@ -152,7 +152,7 @@ export function UploadBox() {
         />
 
         <p className="mt-4 text-xs text-foreground/60">
-          Tip: Use a clear photo in good light. This step uses mock analysis for now.
+          Tip: Use a clear photo in good light for better material and reuse recommendations.
         </p>
       </Card>
 
