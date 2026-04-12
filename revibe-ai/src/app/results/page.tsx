@@ -27,6 +27,87 @@ function normalizeDifficulty(difficulty: string): ReuseIdea["difficulty"] {
   return "Medium";
 }
 
+type NormalizedResultsData = {
+  itemName: string;
+  material: string;
+  confidence: number;
+  risk: RiskLevel;
+  sustainabilityScore: number;
+  ideas: ReuseIdea[];
+  steps: string[];
+  hasIncompleteFields: boolean;
+};
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function toStringOrFallback(value: unknown, fallback: string) {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : fallback;
+}
+
+function normalizeResultsData(analysis: StoredAnalysis): NormalizedResultsData {
+  const result = analysis?.result;
+
+  const itemName = toStringOrFallback(analysis?.itemName, "Unknown item");
+  const material = toStringOrFallback(
+    result?.material,
+    "Material could not be identified"
+  );
+
+  const confidenceRaw =
+    typeof result?.confidence === "number" && Number.isFinite(result.confidence)
+      ? result.confidence
+      : 75;
+  const confidence = clamp(Math.round(confidenceRaw), 0, 100);
+
+  const risk = normalizeRisk(toStringOrFallback(result?.risk, "Medium"));
+
+  const scoreRaw =
+    typeof result?.sustainabilityScore === "number" &&
+    Number.isFinite(result.sustainabilityScore)
+      ? result.sustainabilityScore
+      : 70;
+  const sustainabilityScore = clamp(Math.round(scoreRaw), 0, 100);
+
+  const rawIdeas = Array.isArray(result?.ideas) ? result.ideas : [];
+  const ideas = rawIdeas
+    .map((idea) => ({
+      title: toStringOrFallback(idea?.title, "Reusable project idea"),
+      difficulty: normalizeDifficulty(toStringOrFallback(idea?.difficulty, "Medium")),
+      time: `Cost: ${toStringOrFallback(idea?.estimatedCost, "N/A")}`,
+      summary: toStringOrFallback(
+        idea?.description,
+        "A practical low-cost reuse idea based on available components."
+      ),
+    }))
+    .filter((idea) => idea.title.length > 0);
+
+  const rawSteps = Array.isArray(result?.steps) ? result.steps : [];
+  const steps = rawSteps
+    .map((step) => toStringOrFallback(step, ""))
+    .filter((step) => step.length > 0);
+
+  const hasIncompleteFields =
+    !analysis?.itemName ||
+    !result?.material ||
+    !Array.isArray(result?.ideas) ||
+    !Array.isArray(result?.steps);
+
+  return {
+    itemName,
+    material,
+    confidence,
+    risk,
+    sustainabilityScore,
+    ideas,
+    steps,
+    hasIncompleteFields,
+  };
+}
+
 export default function ResultsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [analysis, setAnalysis] = useState<StoredAnalysis | null>(null);
@@ -47,14 +128,9 @@ export default function ResultsPage() {
     }
   }, []);
 
-  const ideas: ReuseIdea[] = useMemo(() => {
-    if (!analysis) return [];
-    return analysis.result.ideas.map((idea) => ({
-      title: idea.title,
-      difficulty: normalizeDifficulty(idea.difficulty),
-      time: `Cost: ${idea.estimatedCost || "N/A"}`,
-      summary: idea.description,
-    }));
+  const normalized = useMemo(() => {
+    if (!analysis) return null;
+    return normalizeResultsData(analysis);
   }, [analysis]);
 
   if (isLoading) {
@@ -103,9 +179,24 @@ export default function ResultsPage() {
     );
   }
 
-  const risk = normalizeRisk(analysis.result.risk);
+  if (!normalized) {
+    return (
+      <PageShell>
+        <PageHeader
+          title="Analysis result"
+          description="Analysis data was unavailable. Try running Analyze again."
+          action={
+            <Link href="/upload" className={buttonStyles({ variant: "outline" })}>
+              Go to upload
+            </Link>
+          }
+        />
+      </PageShell>
+    );
+  }
+
   const safetyNote =
-    analysis.result.steps[0] ??
+    normalized.steps[0] ??
     "Handle components carefully and follow basic e-waste safety precautions.";
 
   return (
@@ -124,10 +215,10 @@ export default function ResultsPage() {
         <Card className="p-6 lg:col-span-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold">{analysis.itemName}</p>
+              <p className="text-sm font-semibold">{normalized.itemName}</p>
               <p className="mt-2 text-sm leading-6 text-foreground/70">
                 <span className="font-medium text-foreground">Detected:</span>{" "}
-                {analysis.result.material}
+                {normalized.material}
               </p>
             </div>
             <div className="h-10 w-10 shrink-0 rounded-2xl bg-primary/10 ring-1 ring-border grid place-items-center text-primary">
@@ -136,11 +227,9 @@ export default function ResultsPage() {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
-            <StatusBadge label={`Confidence: ${analysis.result.confidence}%`} />
-            <RiskBadge risk={risk} />
-            <StatusBadge
-              label={`Sustainability: ${analysis.result.sustainabilityScore}`}
-            />
+            <StatusBadge label={`Confidence: ${normalized.confidence}%`} />
+            <RiskBadge risk={normalized.risk} />
+            <StatusBadge label={`Sustainability: ${normalized.sustainabilityScore}`} />
           </div>
 
           <div className="mt-5 rounded-2xl bg-muted/60 p-4 ring-1 ring-border">
@@ -149,6 +238,11 @@ export default function ResultsPage() {
               {safetyNote}
             </p>
           </div>
+          {normalized.hasIncompleteFields ? (
+            <p className="mt-3 text-xs text-foreground/60">
+              Some AI fields were incomplete, so safe defaults were applied.
+            </p>
+          ) : null}
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Button size="lg" disabled>
@@ -171,9 +265,9 @@ export default function ResultsPage() {
             <h2 className="text-lg font-semibold">Reuse ideas</h2>
             <span className="text-xs text-foreground/60">From backend</span>
           </div>
-          {ideas.length > 0 ? (
+          {normalized.ideas.length > 0 ? (
             <div className="grid gap-4">
-              {ideas.map((idea) => (
+              {normalized.ideas.map((idea) => (
                 <IdeaCard key={idea.title} idea={idea} />
               ))}
             </div>
