@@ -1,0 +1,14 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="800" rx="48" fill="#F5FBFA"/>
+  <rect x="80" y="80" width="1040" height="640" rx="44" fill="white" stroke="rgba(15,23,42,0.08)" stroke-width="4"/>
+  <g opacity="0.95">
+    <circle cx="600" cy="420" r="230" fill="rgba(13,148,136,0.10)"/>
+    <circle cx="600" cy="420" r="170" fill="rgba(13,148,136,0.18)"/>
+    <circle cx="600" cy="420" r="80" fill="#0D9488"/>
+    <path d="M600 240L640 316H560L600 240Z" fill="rgba(15,23,42,0.35)"/>
+    <path d="M820 420L744 460V380L820 420Z" fill="rgba(15,23,42,0.35)"/>
+    <path d="M600 600L560 524H640L600 600Z" fill="rgba(15,23,42,0.35)"/>
+    <path d="M380 420L456 380V460L380 420Z" fill="rgba(15,23,42,0.35)"/>
+  </g>
+  <text x="100" y="150" font-family="ui-sans-serif, system-ui" font-size="28" fill="rgba(15,23,42,0.55)">Mock upload image</text>
+</svg>

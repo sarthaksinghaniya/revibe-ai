@@ -1,0 +1,11 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="800" rx="48" fill="#F5FBFA"/>
+  <rect x="80" y="80" width="1040" height="640" rx="44" fill="white" stroke="rgba(15,23,42,0.08)" stroke-width="4"/>
+  <g opacity="0.95">
+    <path d="M280 520C280 446.98 339.2 388 412 388H788C860.8 388 920 446.98 920 520V540C920 613.02 860.8 672 788 672H412C339.2 672 280 613.02 280 540V520Z" fill="rgba(13,148,136,0.10)"/>
+    <path d="M356 500C356 460.236 388.236 428 428 428H772C811.764 428 844 460.236 844 500V560C844 599.764 811.764 632 772 632H428C388.236 632 356 599.764 356 560V500Z" fill="rgba(13,148,136,0.18)"/>
+    <circle cx="420" cy="530" r="14" fill="#0D9488"/>
+    <circle cx="780" cy="530" r="14" fill="#0D9488"/>
+  </g>
+  <text x="100" y="150" font-family="ui-sans-serif, system-ui" font-size="28" fill="rgba(15,23,42,0.55)">Mock upload image</text>
+</svg>

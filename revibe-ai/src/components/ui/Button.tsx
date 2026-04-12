@@ -30,6 +30,18 @@ const sizes: Record<ButtonSize, string> = {
   lg: "h-12 px-6 text-base",
 };
 
+export function buttonStyles({
+  variant = "primary",
+  size = "md",
+  className,
+}: {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  className?: string;
+}) {
+  return cn(base, variants[variant], sizes[size], className);
+}
+
 export function Button({
   className,
   variant = "primary",
@@ -40,7 +52,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={cn(base, variants[variant], sizes[size], className)}
+      className={buttonStyles({ variant, size, className })}
       {...props}
     />
   );

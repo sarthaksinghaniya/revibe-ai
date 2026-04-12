@@ -1,0 +1,10 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="800" rx="48" fill="#F5FBFA"/>
+  <rect x="80" y="80" width="1040" height="640" rx="44" fill="white" stroke="rgba(15,23,42,0.08)" stroke-width="4"/>
+  <g opacity="0.95">
+    <rect x="420" y="220" width="360" height="520" rx="60" fill="rgba(13,148,136,0.12)"/>
+    <rect x="458" y="270" width="284" height="380" rx="36" fill="rgba(13,148,136,0.20)"/>
+    <circle cx="600" cy="690" r="22" fill="#0D9488"/>
+  </g>
+  <text x="100" y="150" font-family="ui-sans-serif, system-ui" font-size="28" fill="rgba(15,23,42,0.55)">Mock upload image</text>
+</svg>

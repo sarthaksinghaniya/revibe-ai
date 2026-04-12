@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Logo } from "@/components/brand/Logo";
-import { Button } from "@/components/ui/Button";
+import { buttonStyles } from "@/components/ui/Button";
 
 export function SiteHeader() {
   return (
@@ -11,12 +11,18 @@ export function SiteHeader() {
           <Logo />
         </Link>
         <nav className="flex items-center gap-2">
-          <Button variant="ghost" className="hidden sm:inline-flex" disabled>
+          <Link
+            href="/community"
+            className={buttonStyles({
+              variant: "ghost",
+              className: "hidden sm:inline-flex",
+            })}
+          >
             Community
-          </Button>
-          <Button variant="outline" disabled>
-            Upload (next)
-          </Button>
+          </Link>
+          <Link href="/upload" className={buttonStyles({ variant: "outline" })}>
+            Upload
+          </Link>
         </nav>
       </div>
     </header>
