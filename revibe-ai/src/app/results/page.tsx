@@ -10,6 +10,7 @@ import { Button, buttonStyles } from "@/components/ui/Button";
 import { RiskBadge, StatusBadge } from "@/components/ui/StatusBadge";
 import { Icon } from "@/components/ui/Icon";
 import { IdeaCard } from "@/components/cards/IdeaCard";
+import { ResourceMap } from "@/components/map/ResourceMap";
 import type { ReuseIdea, RiskLevel } from "@/data/mockAnalysis";
 import { readLatestAnalysis, type StoredAnalysis } from "@/lib/analysisSession";
 
@@ -287,25 +288,14 @@ export default function ResultsPage() {
             <div>
               <h3 className="text-sm font-semibold">Nearby resources (preview)</h3>
               <p className="mt-2 text-sm leading-6 text-foreground/70">
-                Placeholder for a future map-based view of repair shops, donation
-                points, and parts stores near you.
+                OpenStreetMap preview placeholder. Resource markers and backend data
+                will be connected in the next steps.
               </p>
             </div>
             <StatusBadge label="Map later" variant="neutral" />
           </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl bg-muted/60 p-4 ring-1 ring-border">
-              <p className="text-xs text-foreground/60">Repair cafés</p>
-              <div className="mt-2 h-3 w-24 rounded-full bg-foreground/10" />
-            </div>
-            <div className="rounded-2xl bg-muted/60 p-4 ring-1 ring-border">
-              <p className="text-xs text-foreground/60">Donations</p>
-              <div className="mt-2 h-3 w-32 rounded-full bg-foreground/10" />
-            </div>
-            <div className="rounded-2xl bg-muted/60 p-4 ring-1 ring-border">
-              <p className="text-xs text-foreground/60">Parts</p>
-              <div className="mt-2 h-3 w-20 rounded-full bg-foreground/10" />
-            </div>
+          <div className="mt-5">
+            <ResourceMap />
           </div>
         </Card>
       </div>

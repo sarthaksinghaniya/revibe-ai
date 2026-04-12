@@ -55,3 +55,8 @@ body {
 ::selection {
   background: color-mix(in srgb, var(--primary) 25%, white);
 }
+
+.revibe-resource-map .leaflet-container {
+  font-family: var(--font-sans);
+  background: var(--muted);
+}
