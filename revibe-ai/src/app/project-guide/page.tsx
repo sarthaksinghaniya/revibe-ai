@@ -12,8 +12,13 @@ import { analyzeItem } from "@/lib/api";
 import { readLatestAnalysis } from "@/lib/analysisSession";
 
 type StepItem = {
-  title: string;
-  detail: string;
+  stepNumber: number;
+  shortTitle: string;
+  whatToDo: string;
+  toolsNeeded: string;
+  estimatedTime: string;
+  cautionTip: string;
+  completed: boolean;
 };
 
 const SAVED_PROJECTS_KEY = "revibe.savedProjects";
@@ -21,29 +26,69 @@ const SAVED_PROJECTS_KEY = "revibe.savedProjects";
 function buildStepGuide(steps: string[], material: string): StepItem[] {
   const fallback: StepItem[] = [
     {
-      title: "Step 1: Gather and clean",
-      detail: `Collect your ${material} parts, clean dust, and sort usable pieces.`,
+      stepNumber: 1,
+      shortTitle: "Clean the material",
+      whatToDo: `Wipe the ${material} and remove dust, rust, or loose plastic pieces before starting.`,
+      toolsNeeded: "Dry cloth, brush, gloves",
+      estimatedTime: "15-20 min",
+      cautionTip: "Wear gloves if edges are sharp.",
+      completed: false,
     },
     {
-      title: "Step 2: Plan the build",
-      detail: "Sketch a simple layout and pick one small project outcome.",
+      stepNumber: 2,
+      shortTitle: "Separate reusable parts",
+      whatToDo:
+        "Split the material into useful parts and discard clearly damaged pieces safely.",
+      toolsNeeded: "Small screwdriver, pliers, containers",
+      estimatedTime: "20-30 min",
+      cautionTip: "Keep screws and tiny parts in one labeled box.",
+      completed: false,
     },
     {
-      title: "Step 3: Assemble safely",
-      detail: "Build in small parts. Test each part before moving to the next step.",
+      stepNumber: 3,
+      shortTitle: "Mark and assemble",
+      whatToDo:
+        "Mark cut/drill points, then assemble the basic project structure in small stages.",
+      toolsNeeded: "Marker, ruler, cutter/drill, tape",
+      estimatedTime: "30-45 min",
+      cautionTip: "Measure twice before cutting to avoid waste.",
+      completed: false,
     },
     {
-      title: "Step 4: Finish and improve",
-      detail: "Secure loose parts, improve looks, and note what to improve next time.",
+      stepNumber: 4,
+      shortTitle: "Finish and test",
+      whatToDo:
+        "Secure loose parts, test basic function, and make one small improvement for durability.",
+      toolsNeeded: "Glue, zip ties, sandpaper (optional)",
+      estimatedTime: "20-30 min",
+      cautionTip: "Test gently first, then do a full test.",
+      completed: false,
     },
   ];
 
   if (!steps.length) return fallback;
 
-  return fallback.map((entry, idx) => ({
-    title: `Step ${idx + 1}: ${entry.title.replace(/^Step \d+:\s*/, "")}`,
-    detail: steps[idx] || entry.detail,
-  }));
+  return fallback.map((entry, idx) => {
+    const aiStep = steps[idx]?.trim();
+    return {
+      ...entry,
+      whatToDo: aiStep || entry.whatToDo,
+    };
+  });
+}
+
+function estimateTotalTime(stepItems: StepItem[]): string {
+  const minutes = stepItems.reduce((sum, step) => {
+    const match = step.estimatedTime.match(/(\d+)-(\d+)/);
+    if (!match) return sum + 30;
+    const low = Number(match[1]);
+    const high = Number(match[2]);
+    return sum + Math.round((low + high) / 2);
+  }, 0);
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours === 0) return `${mins} min`;
+  return `${hours}h ${mins}m`;
 }
 
 export default function ProjectGuidePage() {
@@ -88,6 +133,7 @@ export default function ProjectGuidePage() {
         mainIdea?.description ||
         `Start with a small, useful build using ${material} parts and improve as you go.`,
       steps,
+      totalTime: estimateTotalTime(steps),
     };
   }, [analysis]);
 
@@ -186,16 +232,19 @@ export default function ProjectGuidePage() {
           <p className="mt-2 text-lg font-semibold">{model.projectTitle}</p>
           <div className="mt-3 grid gap-2 text-sm text-foreground/80 sm:grid-cols-2">
             <p>
+              <span className="font-semibold">Estimated time:</span> {model.totalTime}
+            </p>
+            <p>
+              <span className="font-semibold">Approx budget:</span> {model.budget}
+            </p>
+            <p>
+              <span className="font-semibold">Difficulty level:</span> {model.difficulty}
+            </p>
+            <p>
               <span className="font-semibold">Material identified:</span> {model.material}
             </p>
             <p>
               <span className="font-semibold">Reuse potential:</span> {model.reusePotential}
-            </p>
-            <p>
-              <span className="font-semibold">Estimated difficulty:</span> {model.difficulty}
-            </p>
-            <p>
-              <span className="font-semibold">Estimated budget:</span> {model.budget}
             </p>
           </div>
           <p className="mt-3 text-sm text-foreground/75">
@@ -210,9 +259,39 @@ export default function ProjectGuidePage() {
           <p className="text-sm font-semibold">Step-by-step making guide</p>
           <div className="mt-4 grid gap-3">
             {model.steps.map((step) => (
-              <div key={step.title} className="rounded-xl bg-muted/60 p-4 ring-1 ring-border">
-                <p className="text-sm font-semibold">{step.title}</p>
-                <p className="mt-1 text-sm text-foreground/75">{step.detail}</p>
+              <div
+                key={step.stepNumber}
+                className="rounded-xl bg-muted/60 p-4 ring-1 ring-border"
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={
+                      step.completed
+                        ? "mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
+                        : "mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-card text-xs font-semibold ring-1 ring-border"
+                    }
+                  >
+                    {step.stepNumber}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold">{step.shortTitle}</p>
+                    <p className="mt-1 text-sm text-foreground/75">{step.whatToDo}</p>
+                    <div className="mt-3 grid gap-2 text-xs text-foreground/70 sm:grid-cols-2">
+                      <p>
+                        <span className="font-semibold text-foreground">Tools needed:</span>{" "}
+                        {step.toolsNeeded}
+                      </p>
+                      <p>
+                        <span className="font-semibold text-foreground">Estimated time:</span>{" "}
+                        {step.estimatedTime}
+                      </p>
+                    </div>
+                    <p className="mt-2 text-xs text-foreground/70">
+                      <span className="font-semibold text-foreground">Tip:</span>{" "}
+                      {step.cautionTip}
+                    </p>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
