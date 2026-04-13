@@ -27,6 +27,14 @@ type CostTip = {
   detail: string;
 };
 
+type LearningResource = {
+  title: string;
+  description: string;
+  skillType: string;
+  estimatedTime: string;
+  link: string;
+};
+
 const SAVED_PROJECTS_KEY = "revibe.savedProjects";
 
 function buildStepGuide(steps: string[], material: string): StepItem[] {
@@ -132,6 +140,72 @@ function buildCostTips(material: string): CostTip[] {
   ];
 }
 
+function buildLearningResources(material: string) {
+  return {
+    basicConcepts: [
+      {
+        title: "Basic e-waste sorting",
+        description: `Learn how to separate ${material} parts into reusable, recyclable, and discard groups.`,
+        skillType: "Concept",
+        estimatedTime: "10 min",
+        link: "https://www.youtube.com/results?search_query=basic+e-waste+sorting",
+      },
+      {
+        title: "Reuse potential check",
+        description:
+          "Understand how to quickly decide if a part is worth reusing in a beginner project.",
+        skillType: "Concept",
+        estimatedTime: "8 min",
+        link: "https://www.youtube.com/results?search_query=how+to+reuse+electronics+parts",
+      },
+    ] satisfies LearningResource[],
+    practicalSkills: [
+      {
+        title: "How to cut plastic safely",
+        description:
+          "Simple ways to mark and cut plastic or casing material without cracking it.",
+        skillType: "Hands-on",
+        estimatedTime: "12 min",
+        link: "https://www.youtube.com/results?search_query=cut+plastic+safely+diy",
+      },
+      {
+        title: "Simple DIY joining methods",
+        description:
+          "Use tape, screws, zip ties, and glue in low-cost builds for stronger joints.",
+        skillType: "Hands-on",
+        estimatedTime: "10 min",
+        link: "https://www.youtube.com/results?search_query=diy+joining+methods+for+beginners",
+      },
+      {
+        title: "How to reuse small motors",
+        description:
+          "Beginner ideas for testing and reusing motors from fans or old devices.",
+        skillType: "Hands-on",
+        estimatedTime: "15 min",
+        link: "https://www.youtube.com/results?search_query=reuse+small+motor+diy",
+      },
+    ] satisfies LearningResource[],
+    safetyAndTools: [
+      {
+        title: "Beginner soldering basics",
+        description:
+          "Learn basic soldering only if your project needs wire connections.",
+        skillType: "Tool usage",
+        estimatedTime: "20 min",
+        link: "https://www.youtube.com/results?search_query=beginner+soldering+basics",
+      },
+      {
+        title: "Tool safety checklist",
+        description:
+          "Quick safety routine for cutters, drills, glue guns, and basic electrical tools.",
+        skillType: "Safety",
+        estimatedTime: "7 min",
+        link: "https://www.youtube.com/results?search_query=diy+tool+safety+checklist",
+      },
+    ] satisfies LearningResource[],
+  };
+}
+
 export default function ProjectGuidePage() {
   const [loading, setLoading] = useState(true);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
@@ -156,6 +230,7 @@ export default function ProjectGuidePage() {
     const steps = buildStepGuide(analysis.result.steps ?? [], material);
     const mainIdea = analysis.result.ideas?.[0];
     const costTips = buildCostTips(material);
+    const resources = buildLearningResources(material);
     return {
       projectTitle: `${material} Starter Reuse Project`,
       material,
@@ -177,6 +252,7 @@ export default function ProjectGuidePage() {
       steps,
       totalTime: estimateTotalTime(steps),
       costTips,
+      resources,
     };
   }, [analysis]);
 
@@ -360,11 +436,106 @@ export default function ProjectGuidePage() {
 
           <Card className="p-6">
             <p className="text-sm font-semibold">Resources to learn</p>
-            <ul className="mt-3 grid gap-2 text-sm text-foreground/75">
-              <li>Search beginner upcycling videos for your exact material type.</li>
-              <li>Read one short safety checklist before using tools.</li>
-              <li>Check local maker groups for low-cost tool sharing.</li>
-            </ul>
+            <div className="mt-3 grid gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-foreground/65">
+                  Basic concepts
+                </p>
+                <div className="mt-2 grid gap-2">
+                  {model.resources.basicConcepts.map((resource) => (
+                    <div
+                      key={resource.title}
+                      className="rounded-xl bg-muted/60 p-4 ring-1 ring-border"
+                    >
+                      <p className="text-sm font-semibold">{resource.title}</p>
+                      <p className="mt-1 text-sm text-foreground/75">{resource.description}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-foreground/70">
+                        <span className="rounded-full bg-card px-2 py-1 ring-1 ring-border">
+                          {resource.skillType}
+                        </span>
+                        <span>{resource.estimatedTime}</span>
+                      </div>
+                      <div className="mt-3">
+                        <a
+                          href={resource.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={buttonStyles({ size: "sm", variant: "outline" })}
+                        >
+                          Open resource
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-foreground/65">
+                  Practical making skills
+                </p>
+                <div className="mt-2 grid gap-2">
+                  {model.resources.practicalSkills.map((resource) => (
+                    <div
+                      key={resource.title}
+                      className="rounded-xl bg-muted/60 p-4 ring-1 ring-border"
+                    >
+                      <p className="text-sm font-semibold">{resource.title}</p>
+                      <p className="mt-1 text-sm text-foreground/75">{resource.description}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-foreground/70">
+                        <span className="rounded-full bg-card px-2 py-1 ring-1 ring-border">
+                          {resource.skillType}
+                        </span>
+                        <span>{resource.estimatedTime}</span>
+                      </div>
+                      <div className="mt-3">
+                        <a
+                          href={resource.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={buttonStyles({ size: "sm", variant: "outline" })}
+                        >
+                          Open resource
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-foreground/65">
+                  Safety and tool usage
+                </p>
+                <div className="mt-2 grid gap-2">
+                  {model.resources.safetyAndTools.map((resource) => (
+                    <div
+                      key={resource.title}
+                      className="rounded-xl bg-muted/60 p-4 ring-1 ring-border"
+                    >
+                      <p className="text-sm font-semibold">{resource.title}</p>
+                      <p className="mt-1 text-sm text-foreground/75">{resource.description}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-foreground/70">
+                        <span className="rounded-full bg-card px-2 py-1 ring-1 ring-border">
+                          {resource.skillType}
+                        </span>
+                        <span>{resource.estimatedTime}</span>
+                      </div>
+                      <div className="mt-3">
+                        <a
+                          href={resource.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={buttonStyles({ size: "sm", variant: "outline" })}
+                        >
+                          Open resource
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </Card>
         </div>
 
