@@ -21,6 +21,12 @@ type StepItem = {
   completed: boolean;
 };
 
+type CostTip = {
+  label: "Free Option" | "Low-Cost Option" | "Best Value";
+  title: string;
+  detail: string;
+};
+
 const SAVED_PROJECTS_KEY = "revibe.savedProjects";
 
 function buildStepGuide(steps: string[], material: string): StepItem[] {
@@ -91,6 +97,41 @@ function estimateTotalTime(stepItems: StepItem[]): string {
   return `${hours}h ${mins}m`;
 }
 
+function buildCostTips(material: string): CostTip[] {
+  return [
+    {
+      label: "Free Option",
+      title: "Use home scrap before buying",
+      detail:
+        `Reuse old cardboard, packaging foam, or plastic trays with your ${material} parts instead of buying new base sheets.`,
+    },
+    {
+      label: "Low-Cost Option",
+      title: "Borrow tools instead of purchasing",
+      detail:
+        "Borrow a glue gun, drill, or soldering kit from a friend, school lab, or local maker space for one-day use.",
+    },
+    {
+      label: "Best Value",
+      title: "Buy only tiny missing parts",
+      detail:
+        "Purchase only essentials like tape, screws, or connectors from local hardware/e-waste markets instead of full new kits.",
+    },
+    {
+      label: "Free Option",
+      title: "Reuse small components from home",
+      detail:
+        "Save bottle caps, broken wires, old screws, zip ties, and leftover switches from damaged gadgets for assembly.",
+    },
+    {
+      label: "Low-Cost Option",
+      title: "Skip expensive finishing tools",
+      detail:
+        "Use sandpaper + hand tools for shaping and finishing instead of powered tools unless absolutely needed.",
+    },
+  ];
+}
+
 export default function ProjectGuidePage() {
   const [loading, setLoading] = useState(true);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
@@ -114,6 +155,7 @@ export default function ProjectGuidePage() {
     const material = analysis.result.material || analysis.itemName;
     const steps = buildStepGuide(analysis.result.steps ?? [], material);
     const mainIdea = analysis.result.ideas?.[0];
+    const costTips = buildCostTips(material);
     return {
       projectTitle: `${material} Starter Reuse Project`,
       material,
@@ -134,6 +176,7 @@ export default function ProjectGuidePage() {
         `Start with a small, useful build using ${material} parts and improve as you go.`,
       steps,
       totalTime: estimateTotalTime(steps),
+      costTips,
     };
   }, [analysis]);
 
@@ -300,11 +343,19 @@ export default function ProjectGuidePage() {
         <div className="grid gap-4 lg:grid-cols-2">
           <Card className="p-6">
             <p className="text-sm font-semibold">Cost reduction tips</p>
-            <ul className="mt-3 grid gap-2 text-sm text-foreground/75">
-              <li>Use parts you already have before buying anything new.</li>
-              <li>Buy missing parts from local repair markets for lower cost.</li>
-              <li>Test parts first to avoid spending on unnecessary replacements.</li>
-            </ul>
+            <div className="mt-3 grid gap-3">
+              {model.costTips.map((tip) => (
+                <div key={`${tip.label}-${tip.title}`} className="rounded-xl bg-muted/60 p-4 ring-1 ring-border">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold">{tip.title}</p>
+                    <span className="rounded-full bg-card px-2.5 py-1 text-[11px] font-semibold ring-1 ring-border">
+                      {tip.label}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-foreground/75">{tip.detail}</p>
+                </div>
+              ))}
+            </div>
           </Card>
 
           <Card className="p-6">
