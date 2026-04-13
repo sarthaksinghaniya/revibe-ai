@@ -8,7 +8,6 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button, buttonStyles } from "@/components/ui/Button";
 import { StateCard } from "@/components/ui/StateCard";
-import { analyzeItem } from "@/lib/api";
 import { readLatestAnalysis } from "@/lib/analysisSession";
 
 type StepItem = {
@@ -36,6 +35,13 @@ type LearningResource = {
 };
 
 const SAVED_PROJECTS_KEY = "revibe.savedProjects";
+const HELP_ACTIONS = [
+  "Simplify this step",
+  "Safer method",
+  "Lower cost option",
+  "Explain tools needed",
+  "Give alternative idea",
+] as const;
 
 function buildStepGuide(steps: string[], material: string): StepItem[] {
   const fallback: StepItem[] = [
@@ -212,16 +218,18 @@ export default function ProjectGuidePage() {
   const [helpQuery, setHelpQuery] = useState("");
   const [helpAnswer, setHelpAnswer] = useState<string | null>(null);
   const [helpLoading, setHelpLoading] = useState(false);
-  const [helpError, setHelpError] = useState<string | null>(null);
+  const [activeHelpAction, setActiveHelpAction] = useState<string | null>(null);
   const [hasData, setHasData] = useState(false);
   const [analysis, setAnalysis] = useState<ReturnType<typeof readLatestAnalysis>>(null);
   const helpPanelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const latest = readLatestAnalysis();
-    setAnalysis(latest);
-    setHasData(Boolean(latest));
-    setLoading(false);
+    queueMicrotask(() => {
+      setAnalysis(latest);
+      setHasData(Boolean(latest));
+      setLoading(false);
+    });
   }, []);
 
   const model = useMemo(() => {
@@ -275,30 +283,47 @@ export default function ProjectGuidePage() {
     setSaveNotice("Project saved. You can continue from here anytime.");
   }
 
-  async function askAiHelp() {
-    if (!analysis || !model) return;
-    setHelpError(null);
-    setHelpLoading(true);
-    try {
-      const question = helpQuery.trim() || "Give me beginner tips for the next build step.";
-      const response = await analyzeItem({
-        itemName: analysis.itemName,
-        notes: `Project guide help request. Material: ${model.material}. Question: ${question}`,
-      });
-      const answer =
-        response.data.ideas?.[0]?.description ||
-        response.data.steps?.[0] ||
-        "Start with a small test build, then improve one part at a time.";
-      setHelpAnswer(answer);
-    } catch (error) {
-      setHelpError(
-        error instanceof Error
-          ? error.message
-          : "Could not get AI help right now. Please try again.",
-      );
-    } finally {
-      setHelpLoading(false);
+  function buildMockHelpResponse(action: string, question: string): string {
+    if (!model) return "Start small and build one step at a time.";
+
+    const byAction: Record<string, string> = {
+      "Simplify this step":
+        "Break this into two mini tasks: first prepare parts, then join only one section and test before continuing.",
+      "Safer method":
+        "Use gloves, clamp parts before cutting, and test with low power first. If a wire looks damaged, replace it instead of reusing.",
+      "Lower cost option":
+        "Use scrap cardboard/plastic as base, borrow tools, and buy only small connectors or screws from local hardware shops.",
+      "Explain tools needed":
+        `You mainly need basic tools: ${model.steps[0]?.toolsNeeded || "screwdriver, pliers, tape"}. Start with hand tools before power tools.`,
+      "Give alternative idea":
+        `If this build feels hard, turn ${model.material} into a simpler utility project like a cable organizer or small desk stand.`,
+    };
+
+    if (byAction[action]) return byAction[action];
+
+    if (question.toLowerCase().includes("safe")) {
+      return "Good question. Keep power disconnected while assembling, and test slowly after checking all joints.";
     }
+    if (question.toLowerCase().includes("budget")) {
+      return "Try reusing home scrap first. Spend only on tiny missing parts to stay within budget.";
+    }
+    return "You’re on the right track. Start with one small step, test it, then move to the next step confidently.";
+  }
+
+  async function askAiHelp(action?: string) {
+    if (!model) return;
+
+    const selectedAction = action || "General help";
+    const question = helpQuery.trim();
+
+    setActiveHelpAction(selectedAction);
+    setHelpLoading(true);
+
+    await new Promise((resolve) => setTimeout(resolve, 450));
+
+    const answer = buildMockHelpResponse(selectedAction, question);
+    setHelpAnswer(answer);
+    setHelpLoading(false);
   }
 
   function goToHelpPanel() {
@@ -541,32 +566,53 @@ export default function ProjectGuidePage() {
 
         <div ref={helpPanelRef} tabIndex={-1}>
           <Card className="p-6">
-          <p className="text-sm font-semibold">AI guidance help panel</p>
-          <p className="mt-2 text-sm text-foreground/75">
-            Ask for help in simple words. Example: &quot;What should I do first?&quot;
-          </p>
-          <textarea
-            value={helpQuery}
-            onChange={(e) => setHelpQuery(e.target.value)}
-            placeholder="Ask AI for help with your next step..."
-            className="mt-3 min-h-24 w-full rounded-xl bg-card p-3 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          <div className="mt-3">
-            <Button onClick={askAiHelp} disabled={helpLoading}>
-              {helpLoading ? "Getting help..." : "Ask AI Help"}
-            </Button>
-          </div>
-          {helpError ? (
-            <p className="mt-3 text-sm text-rose-700" role="alert">
-              {helpError}
+            <p className="text-sm font-semibold">AI Guided Help</p>
+            <p className="mt-2 text-sm text-foreground/75">
+              Stuck on a step? Use quick help options or ask your own question.
             </p>
-          ) : null}
-          {helpAnswer ? (
-            <div className="mt-3 rounded-xl bg-muted/60 p-4 ring-1 ring-border">
-              <p className="text-sm font-medium">AI suggestion</p>
-              <p className="mt-1 text-sm text-foreground/75">{helpAnswer}</p>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {HELP_ACTIONS.map((action) => (
+                <button
+                  key={action}
+                  className={
+                    activeHelpAction === action
+                      ? buttonStyles({ size: "sm", variant: "secondary" })
+                      : buttonStyles({ size: "sm", variant: "outline" })
+                  }
+                  onClick={() => {
+                    setHelpQuery(action);
+                    void askAiHelp(action);
+                  }}
+                >
+                  {action}
+                </button>
+              ))}
             </div>
-          ) : null}
+
+            <textarea
+              value={helpQuery}
+              onChange={(e) => setHelpQuery(e.target.value)}
+              placeholder="Ask anything about this project..."
+              className="mt-3 min-h-24 w-full rounded-xl bg-card p-3 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <div className="mt-3">
+              <Button onClick={() => void askAiHelp()} disabled={helpLoading}>
+                {helpLoading ? "Getting help..." : "Ask AI Help"}
+              </Button>
+            </div>
+            {helpAnswer ? (
+              <div className="mt-3 rounded-xl bg-muted/60 p-4 ring-1 ring-border">
+                <p className="text-sm font-medium">AI suggestion</p>
+                <p className="mt-1 text-sm text-foreground/75">{helpAnswer}</p>
+              </div>
+            ) : (
+              <div className="mt-3 rounded-xl bg-muted/40 p-4 ring-1 ring-border">
+                <p className="text-sm text-foreground/70">
+                  Quick tip: start with the easiest step first, test early, and improve one part at a time.
+                </p>
+              </div>
+            )}
           </Card>
         </div>
 
