@@ -1,0 +1,5 @@
+# Ignore all environment files across the repository
+**/.env*
+
+# Local Netlify folder
+.netlify
