@@ -58,13 +58,15 @@ server.listen(env.PORT, env.HOST, () => {
   console.log(
     `Revibe backend listening on ${env.HOST}:${env.PORT} (${env.NODE_ENV})`
   );
-  // Temporary OAuth startup diagnostics for local setup.
-  // eslint-disable-next-line no-console
-  console.log(`GITHUB_CLIENT_ID=${env.GITHUB_CLIENT_ID || "<missing>"}`);
-  // eslint-disable-next-line no-console
-  console.log(
-    `GITHUB_CLIENT_SECRET_PRESENT=${Boolean(env.GITHUB_CLIENT_SECRET)}`
-  );
-  // eslint-disable-next-line no-console
-  console.log(`GITHUB_REDIRECT_URI=${env.GITHUB_REDIRECT_URI || "<missing>"}`);
+  if (env.NODE_ENV !== "production") {
+    // Local-only OAuth setup diagnostics.
+    // eslint-disable-next-line no-console
+    console.log(`GITHUB_CLIENT_ID=${env.GITHUB_CLIENT_ID || "<missing>"}`);
+    // eslint-disable-next-line no-console
+    console.log(
+      `GITHUB_CLIENT_SECRET_PRESENT=${Boolean(env.GITHUB_CLIENT_SECRET)}`
+    );
+    // eslint-disable-next-line no-console
+    console.log(`GITHUB_REDIRECT_URI=${env.GITHUB_REDIRECT_URI || "<missing>"}`);
+  }
 });
