@@ -4,7 +4,18 @@ import type { CommunityPost } from "@/data/mockCommunity";
 import { Card } from "@/components/ui/Card";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 
+const PLACEHOLDER_POST_IMAGE = "/mock/ewaste-1.svg";
+
+function getSafeImageSrc(src?: string) {
+  if (!src) return PLACEHOLDER_POST_IMAGE;
+  if (src.startsWith("/")) return src;
+  if (src.startsWith("http://") || src.startsWith("https://")) return src;
+  return PLACEHOLDER_POST_IMAGE;
+}
+
 export function PostCard({ post }: { post: CommunityPost }) {
+  const safeImageSrc = getSafeImageSrc(post.imageSrc);
+
   return (
     <Card className="overflow-hidden hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
       <div className="p-5">
@@ -29,7 +40,7 @@ export function PostCard({ post }: { post: CommunityPost }) {
 
       <div className="relative aspect-[3/2] w-full bg-muted">
         <Image
-          src={post.imageSrc}
+          src={safeImageSrc}
           alt={`${post.userName} project update`}
           fill
           className="object-cover"

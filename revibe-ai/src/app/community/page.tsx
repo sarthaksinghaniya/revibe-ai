@@ -10,6 +10,15 @@ import { Button } from "@/components/ui/Button";
 import { StateCard } from "@/components/ui/StateCard";
 import { createPost, getPosts, type CommunityPost } from "@/lib/api";
 
+const DEFAULT_POST_IMAGE = "/mock/ewaste-1.svg";
+
+function normalizePostImageSrc(src: string): string {
+  if (!src) return DEFAULT_POST_IMAGE;
+  if (src.startsWith("/")) return src;
+  if (src.startsWith("http://") || src.startsWith("https://")) return src;
+  return DEFAULT_POST_IMAGE;
+}
+
 export default function CommunityPage() {
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,6 +49,7 @@ export default function CommunityPage() {
 
     const trimmedCaption = caption.trim();
     const trimmedImageUrl = imageUrl.trim();
+    const normalizedImageSrc = normalizePostImageSrc(trimmedImageUrl);
     const trimmedProgress = progress.trim();
 
     if (trimmedCaption.length < 2) {
@@ -64,7 +74,7 @@ export default function CommunityPage() {
       const response = await createPost({
         userName: "Guest Builder",
         caption: trimmedCaption,
-        imageSrc: trimmedImageUrl || undefined,
+        imageSrc: normalizedImageSrc,
         progressPct,
       });
 
