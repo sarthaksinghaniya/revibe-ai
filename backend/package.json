@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/server.js",
+    "prestart": "npm install --omit=dev",
     "start": "node src/server.js",
     "test:groq": "node src/scripts/testGroq.js"
   },
