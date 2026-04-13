@@ -52,14 +52,17 @@ function mapSafetyNote(risk: string): string {
 export function UploadBox() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const materialInputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const [analyzeSuccess, setAnalyzeSuccess] = useState<string | null>(null);
   const [material, setMaterial] = useState("");
   const [category, setCategory] = useState("");
   const [complexity, setComplexity] = useState("");
   const [budget, setBudget] = useState("");
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [latestBackendResult, setLatestBackendResult] = useState<{
     itemName: string;
     result: Awaited<ReturnType<typeof analyzeItem>>["data"];
@@ -90,6 +93,7 @@ export function UploadBox() {
     }
     setFile(next);
     setAnalyzeError(null);
+    setAnalyzeSuccess(null);
   }
 
   function clear() {
@@ -101,6 +105,8 @@ export function UploadBox() {
     setLatestBackendResult(null);
     setAnalysisCard(null);
     setAnalyzeError(null);
+    setAnalyzeSuccess(null);
+    setShowAdvancedOptions(false);
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -108,11 +114,13 @@ export function UploadBox() {
     const typedMaterial = material.trim();
     if (!file && !typedMaterial) {
       setAnalyzeError("Please upload an image or type a material to continue.");
+      setAnalyzeSuccess(null);
       return;
     }
 
     setIsAnalyzing(true);
     setAnalyzeError(null);
+    setAnalyzeSuccess(null);
 
     const itemName =
       typedMaterial ||
@@ -169,6 +177,7 @@ export function UploadBox() {
         safetyNote,
         quickSummary,
       });
+      setAnalyzeSuccess("Analysis ready. You can now start your project.");
     } catch (error) {
       const message =
         error instanceof Error
@@ -191,8 +200,32 @@ export function UploadBox() {
     router.push("/project-guide");
   }
 
+  function focusMaterialInput() {
+    materialInputRef.current?.focus();
+  }
+
+  const flowStep = analysisCard ? 3 : 2;
+
   return (
     <div className="grid gap-4" aria-busy={isAnalyzing}>
+      <Card className="p-4 sm:p-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-foreground/65">
+          Reuse Flow
+        </p>
+        <div className="mt-2 grid gap-2 text-sm sm:grid-cols-4">
+          <p className={flowStep >= 1 ? "font-semibold text-foreground" : "text-foreground/60"}>
+            1. Input
+          </p>
+          <p className={flowStep >= 2 ? "font-semibold text-foreground" : "text-foreground/60"}>
+            2. Analyze
+          </p>
+          <p className={flowStep >= 3 ? "font-semibold text-foreground" : "text-foreground/60"}>
+            3. Start Project
+          </p>
+          <p className="text-foreground/60">4. Guided Steps</p>
+        </div>
+      </Card>
+
       <Card
         className={cn(
           "relative overflow-hidden p-6 sm:p-8",
@@ -238,9 +271,9 @@ export function UploadBox() {
             <div className="h-12 w-12 rounded-2xl bg-primary/10 ring-1 ring-border grid place-items-center text-primary">
               <Icon name="upload" />
             </div>
-            <p className="mt-4 text-sm font-semibold">Drag & drop an image</p>
+            <p className="mt-4 text-sm font-semibold">Step 1: Choose your input</p>
             <p className="mt-1 text-sm text-foreground/70">
-              or click to choose a file (PNG, JPG, WebP).
+              Upload an image or type the material manually.
             </p>
           </div>
         </div>
@@ -254,8 +287,16 @@ export function UploadBox() {
           onChange={(e) => onFiles(e.target.files)}
         />
 
-        <p className="mt-4 text-xs text-foreground/60">
-          Tip: Use a clear photo in good light for better material and reuse recommendations.
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button size="sm" onClick={pickFile}>
+            Upload Image
+          </Button>
+          <Button size="sm" variant="outline" onClick={focusMaterialInput}>
+            Type Material
+          </Button>
+        </div>
+        <p className="mt-3 text-xs text-foreground/60">
+          Tip: a clear photo helps, but typed input is enough to continue.
         </p>
       </Card>
 
@@ -270,6 +311,7 @@ export function UploadBox() {
             </label>
             <input
               id="material-input"
+              ref={materialInputRef}
               value={material}
               onChange={(e) => setMaterial(e.target.value)}
               placeholder="Example: old keyboard, plastic bottle, broken fan, laptop motherboard"
@@ -280,74 +322,88 @@ export function UploadBox() {
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div>
-              <label
-                htmlFor="category-select"
-                className="text-xs font-medium text-foreground/70"
-              >
-                Category (optional)
-              </label>
-              <select
-                id="category-select"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="mt-1 h-11 w-full rounded-xl bg-card px-3 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="">Select category</option>
-                <option value="Home Decor">Home Decor</option>
-                <option value="Education">Education</option>
-                <option value="Utility">Utility</option>
-                <option value="Electronics">Electronics</option>
-                <option value="Art & Craft">Art & Craft</option>
-                <option value="Storage">Storage</option>
-              </select>
-            </div>
+          <div>
+            <button
+              className="text-xs font-semibold text-foreground/75 underline-offset-2 hover:underline"
+              onClick={() => setShowAdvancedOptions((prev) => !prev)}
+            >
+              {showAdvancedOptions ? "Hide optional details" : "Add optional details"}
+            </button>
+            {showAdvancedOptions ? (
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label
+                    htmlFor="category-select"
+                    className="text-xs font-medium text-foreground/70"
+                  >
+                    Category (optional)
+                  </label>
+                  <select
+                    id="category-select"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="mt-1 h-11 w-full rounded-xl bg-card px-3 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">Select category</option>
+                    <option value="Home Decor">Home Decor</option>
+                    <option value="Education">Education</option>
+                    <option value="Utility">Utility</option>
+                    <option value="Electronics">Electronics</option>
+                    <option value="Art & Craft">Art & Craft</option>
+                    <option value="Storage">Storage</option>
+                  </select>
+                </div>
 
-            <div>
-              <label
-                htmlFor="complexity-select"
-                className="text-xs font-medium text-foreground/70"
-              >
-                Complexity (optional)
-              </label>
-              <select
-                id="complexity-select"
-                value={complexity}
-                onChange={(e) => setComplexity(e.target.value)}
-                className="mt-1 h-11 w-full rounded-xl bg-card px-3 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="">Select complexity</option>
-                <option value="Easy">Easy</option>
-                <option value="Medium">Medium</option>
-                <option value="Advanced">Advanced</option>
-              </select>
-            </div>
+                <div>
+                  <label
+                    htmlFor="complexity-select"
+                    className="text-xs font-medium text-foreground/70"
+                  >
+                    Complexity (optional)
+                  </label>
+                  <select
+                    id="complexity-select"
+                    value={complexity}
+                    onChange={(e) => setComplexity(e.target.value)}
+                    className="mt-1 h-11 w-full rounded-xl bg-card px-3 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">Select complexity</option>
+                    <option value="Easy">Easy</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Advanced">Advanced</option>
+                  </select>
+                </div>
 
-            <div>
-              <label
-                htmlFor="budget-input"
-                className="text-xs font-medium text-foreground/70"
-              >
-                Budget (optional)
-              </label>
-              <input
-                id="budget-input"
-                value={budget}
-                onChange={(e) => setBudget(e.target.value)}
-                inputMode="numeric"
-                placeholder="Enter max budget in ₹"
-                className="mt-1 h-11 w-full rounded-xl bg-card px-3 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
+                <div>
+                  <label
+                    htmlFor="budget-input"
+                    className="text-xs font-medium text-foreground/70"
+                  >
+                    Budget (optional)
+                  </label>
+                  <input
+                    id="budget-input"
+                    value={budget}
+                    onChange={(e) => setBudget(e.target.value)}
+                    inputMode="numeric"
+                    placeholder="Enter max budget in ₹"
+                    className="mt-1 h-11 w-full rounded-xl bg-card px-3 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                </div>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-foreground/60">
+                Optional details help AI tailor better suggestions.
+              </p>
+            )}
           </div>
         </div>
 
         <div className="my-5 h-px bg-border/80" />
 
-        <div className="flex items-start justify-between gap-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <p className="text-sm font-semibold">Preview</p>
+            <p className="text-sm font-semibold">Step 2: Analyze your material</p>
             <p className="mt-1 text-sm text-foreground/70">
               {file ? (
                 <>
@@ -359,7 +415,7 @@ export function UploadBox() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <Button variant="outline" onClick={clear} disabled={!file || isAnalyzing}>
+            <Button variant="outline" onClick={clear} disabled={isAnalyzing}>
               Clear
             </Button>
             <Button onClick={analyze} disabled={isAnalyzing}>
@@ -374,6 +430,15 @@ export function UploadBox() {
             </Button>
           </div>
         </div>
+        {analyzeSuccess ? (
+          <p className="mt-3 text-sm text-emerald-700" role="status">
+            {analyzeSuccess}
+          </p>
+        ) : (
+          <p className="mt-3 text-xs text-foreground/60">
+            You can analyze with image, typed material, or both.
+          </p>
+        )}
         {analyzeError ? (
           <p className="mt-3 text-sm text-rose-700" role="alert">
             {analyzeError}
@@ -401,7 +466,7 @@ export function UploadBox() {
 
         {analysisCard ? (
           <Card className="mt-5 p-5">
-            <p className="text-sm font-semibold">AI Reuse Analysis</p>
+            <p className="text-sm font-semibold">Step 3: Analysis result</p>
             <div className="mt-3 grid gap-2 text-sm text-foreground/80">
               <p>
                 <span className="font-semibold">Material identified:</span>{" "}
@@ -433,8 +498,17 @@ export function UploadBox() {
             <div className="mt-4">
               <Button onClick={startProject}>Start Project</Button>
             </div>
+            <p className="mt-2 text-xs text-foreground/60">
+              Next, you will get guided steps and in-flow AI help.
+            </p>
           </Card>
-        ) : null}
+        ) : (
+          <div className="mt-5 rounded-2xl bg-muted/40 p-4 ring-1 ring-border">
+            <p className="text-sm text-foreground/70">
+              Your analysis summary will appear here after clicking Analyze.
+            </p>
+          </div>
+        )}
       </Card>
     </div>
   );
