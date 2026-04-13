@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { PageShell } from "@/components/layout/PageShell";
@@ -206,13 +206,12 @@ function buildLearningResources(material: string) {
 }
 
 export default function ProjectGuidePage() {
-  const { hydrated, state, setState } = useAppState();
+  const { hydrated, state, setState, setStateImmediate } = useAppState();
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [helpQuery, setHelpQuery] = useState("");
   const [helpAnswer, setHelpAnswer] = useState<string | null>(null);
   const [helpLoading, setHelpLoading] = useState(false);
   const [activeHelpAction, setActiveHelpAction] = useState<string | null>(null);
-  const [stepStatuses, setStepStatuses] = useState<Record<number, StepStatus>>({});
   const [expandedCompleted, setExpandedCompleted] = useState<Record<number, boolean>>({});
   const helpPanelRef = useRef<HTMLDivElement | null>(null);
 
@@ -251,8 +250,8 @@ export default function ProjectGuidePage() {
     };
   }, [state.analysis.latest]);
 
-  useEffect(() => {
-    if (!model) return;
+  const stepStatuses = useMemo(() => {
+    if (!model) return {} as Record<number, StepStatus>;
     const savedForProject =
       state.activeProject.projectId === model.projectId ? state.activeProject.stepStatuses : {};
     const nextStatuses: Record<number, StepStatus> = {};
@@ -263,28 +262,8 @@ export default function ProjectGuidePage() {
         saved === "in_progress" || saved === "completed" ? saved : "not_started";
     }
 
-    queueMicrotask(() => {
-      setStepStatuses(nextStatuses);
-      setExpandedCompleted({});
-    });
+    return nextStatuses;
   }, [model, state.activeProject.projectId, state.activeProject.stepStatuses]);
-
-  useEffect(() => {
-    if (!model) return;
-    if (!Object.keys(stepStatuses).length) return;
-    setState((prev) => ({
-      ...prev,
-      activeProject: {
-        ...prev.activeProject,
-        projectId: model.projectId,
-        projectTitle: model.projectTitle,
-        material: model.material,
-        steps: model.steps.map((step) => step.whatToDo),
-        stepStatuses,
-        lastUpdatedAt: new Date().toISOString(),
-      },
-    }));
-  }, [model, setState, stepStatuses]);
 
   const completedCount = useMemo(
     () => Object.values(stepStatuses).filter((status) => status === "completed").length,
@@ -326,7 +305,25 @@ export default function ProjectGuidePage() {
   }
 
   function setStepStatus(stepNumber: number, status: StepStatus) {
-    setStepStatuses((prev) => ({ ...prev, [stepNumber]: status }));
+    if (!model) return;
+    setStateImmediate((prev) => {
+      const nextStatuses = {
+        ...prev.activeProject.stepStatuses,
+        [stepNumber]: status,
+      };
+      return {
+        ...prev,
+        activeProject: {
+          ...prev.activeProject,
+          projectId: model.projectId,
+          projectTitle: model.projectTitle,
+          material: model.material,
+          steps: model.steps.map((step) => step.whatToDo),
+          stepStatuses: nextStatuses,
+          lastUpdatedAt: new Date().toISOString(),
+        },
+      };
+    });
     if (status !== "completed") {
       setExpandedCompleted((prev) => ({ ...prev, [stepNumber]: false }));
     }
