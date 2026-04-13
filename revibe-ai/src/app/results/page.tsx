@@ -6,7 +6,7 @@ import Link from "next/link";
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
-import { Button, buttonStyles } from "@/components/ui/Button";
+import { buttonStyles } from "@/components/ui/Button";
 import { RiskBadge, StatusBadge } from "@/components/ui/StatusBadge";
 import { Icon } from "@/components/ui/Icon";
 import { StateCard } from "@/components/ui/StateCard";
@@ -15,6 +15,7 @@ import { ResourceList } from "@/components/map/ResourceList";
 import { ResourceMap } from "@/components/map/ResourceMap";
 import { mockResources } from "@/data/mockResources";
 import type { ReuseIdea, RiskLevel } from "@/data/mockAnalysis";
+import { useAppState } from "@/lib/appState";
 import { readLatestAnalysis, type StoredAnalysis } from "@/lib/analysisSession";
 
 function normalizeRisk(risk: string): RiskLevel {
@@ -113,6 +114,7 @@ function normalizeResultsData(analysis: StoredAnalysis): NormalizedResultsData {
 }
 
 export default function ResultsPage() {
+  const { hydrated, state } = useAppState();
   const [isLoading, setIsLoading] = useState(true);
   const [analysis, setAnalysis] = useState<StoredAnalysis | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -122,8 +124,9 @@ export default function ResultsPage() {
   );
 
   useEffect(() => {
+    if (!hydrated) return;
     try {
-      const latest = readLatestAnalysis();
+      const latest = state.analysis.latest ?? readLatestAnalysis();
       setAnalysis(latest);
     } catch (error) {
       setLoadError(
@@ -134,7 +137,7 @@ export default function ResultsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [hydrated, state.analysis.latest]);
 
   const normalized = useMemo(() => {
     if (!analysis) return null;
@@ -261,9 +264,9 @@ export default function ResultsPage() {
           ) : null}
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Button size="lg" disabled>
-              Start Project (coming soon)
-            </Button>
+            <Link href="/project-guide" className={buttonStyles({ size: "lg" })}>
+              Start Project
+            </Link>
             <Link
               href="/community"
               className={buttonStyles({ size: "lg", variant: "outline" })}
@@ -272,7 +275,7 @@ export default function ResultsPage() {
             </Link>
           </div>
           <p className="mt-3 text-xs text-foreground/60">
-            Guided project tracking will be enabled in a future release.
+            Continue to a guided, trackable build flow with AI support.
           </p>
         </Card>
 

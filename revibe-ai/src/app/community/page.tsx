@@ -26,6 +26,7 @@ export default function CommunityPage() {
   const [progress, setProgress] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -69,6 +70,7 @@ export default function CommunityPage() {
 
     setIsSubmitting(true);
     setSubmitError(null);
+    setSubmitSuccess(null);
 
     try {
       const response = await createPost({
@@ -82,6 +84,7 @@ export default function CommunityPage() {
       setCaption("");
       setProgress("");
       setImageUrl("");
+      setSubmitSuccess("Post shared successfully with the community.");
     } catch (error) {
       setSubmitError(
         error instanceof Error
@@ -161,6 +164,11 @@ export default function CommunityPage() {
                 {submitError ? (
                   <p className="text-sm text-rose-700" role="alert">
                     {submitError}
+                  </p>
+                ) : null}
+                {submitSuccess ? (
+                  <p className="text-sm text-emerald-700" role="status">
+                    {submitSuccess}
                   </p>
                 ) : null}
                 <Button type="submit" disabled={isSubmitting}>

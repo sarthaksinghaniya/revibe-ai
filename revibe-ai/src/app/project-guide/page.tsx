@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button, buttonStyles } from "@/components/ui/Button";
 import { StateCard } from "@/components/ui/StateCard";
-import { readLatestAnalysis } from "@/lib/analysisSession";
+import { useAppState, type SavedProjectState, type StepStatus } from "@/lib/appState";
 
 type StepItem = {
   stepNumber: number;
@@ -17,9 +17,7 @@ type StepItem = {
   toolsNeeded: string;
   estimatedTime: string;
   cautionTip: string;
-  completed: boolean;
 };
-
 type CostTip = {
   label: "Free Option" | "Low-Cost Option" | "Best Value";
   title: string;
@@ -34,7 +32,6 @@ type LearningResource = {
   link: string;
 };
 
-const SAVED_PROJECTS_KEY = "revibe.savedProjects";
 const HELP_ACTIONS = [
   "Simplify this step",
   "Safer method",
@@ -52,7 +49,6 @@ function buildStepGuide(steps: string[], material: string): StepItem[] {
       toolsNeeded: "Dry cloth, brush, gloves",
       estimatedTime: "15-20 min",
       cautionTip: "Wear gloves if edges are sharp.",
-      completed: false,
     },
     {
       stepNumber: 2,
@@ -62,7 +58,6 @@ function buildStepGuide(steps: string[], material: string): StepItem[] {
       toolsNeeded: "Small screwdriver, pliers, containers",
       estimatedTime: "20-30 min",
       cautionTip: "Keep screws and tiny parts in one labeled box.",
-      completed: false,
     },
     {
       stepNumber: 3,
@@ -72,7 +67,6 @@ function buildStepGuide(steps: string[], material: string): StepItem[] {
       toolsNeeded: "Marker, ruler, cutter/drill, tape",
       estimatedTime: "30-45 min",
       cautionTip: "Measure twice before cutting to avoid waste.",
-      completed: false,
     },
     {
       stepNumber: 4,
@@ -82,7 +76,6 @@ function buildStepGuide(steps: string[], material: string): StepItem[] {
       toolsNeeded: "Glue, zip ties, sandpaper (optional)",
       estimatedTime: "20-30 min",
       cautionTip: "Test gently first, then do a full test.",
-      completed: false,
     },
   ];
 
@@ -213,33 +206,27 @@ function buildLearningResources(material: string) {
 }
 
 export default function ProjectGuidePage() {
-  const [loading, setLoading] = useState(true);
+  const { hydrated, state, setState } = useAppState();
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [helpQuery, setHelpQuery] = useState("");
   const [helpAnswer, setHelpAnswer] = useState<string | null>(null);
   const [helpLoading, setHelpLoading] = useState(false);
   const [activeHelpAction, setActiveHelpAction] = useState<string | null>(null);
-  const [hasData, setHasData] = useState(false);
-  const [analysis, setAnalysis] = useState<ReturnType<typeof readLatestAnalysis>>(null);
+  const [stepStatuses, setStepStatuses] = useState<Record<number, StepStatus>>({});
+  const [expandedCompleted, setExpandedCompleted] = useState<Record<number, boolean>>({});
   const helpPanelRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    const latest = readLatestAnalysis();
-    queueMicrotask(() => {
-      setAnalysis(latest);
-      setHasData(Boolean(latest));
-      setLoading(false);
-    });
-  }, []);
-
   const model = useMemo(() => {
+    const analysis = state.analysis.latest;
     if (!analysis) return null;
     const material = analysis.result.material || analysis.itemName;
     const steps = buildStepGuide(analysis.result.steps ?? [], material);
     const mainIdea = analysis.result.ideas?.[0];
     const costTips = buildCostTips(material);
     const resources = buildLearningResources(material);
+    const projectId = `${analysis.itemName}::${material}`;
     return {
+      projectId,
       projectTitle: `${material} Starter Reuse Project`,
       material,
       reusePotential:
@@ -262,25 +249,91 @@ export default function ProjectGuidePage() {
       costTips,
       resources,
     };
-  }, [analysis]);
+  }, [state.analysis.latest]);
+
+  useEffect(() => {
+    if (!model) return;
+    const savedForProject =
+      state.activeProject.projectId === model.projectId ? state.activeProject.stepStatuses : {};
+    const nextStatuses: Record<number, StepStatus> = {};
+
+    for (const step of model.steps) {
+      const saved = savedForProject[step.stepNumber];
+      nextStatuses[step.stepNumber] =
+        saved === "in_progress" || saved === "completed" ? saved : "not_started";
+    }
+
+    queueMicrotask(() => {
+      setStepStatuses(nextStatuses);
+      setExpandedCompleted({});
+    });
+  }, [model, state.activeProject.projectId, state.activeProject.stepStatuses]);
+
+  useEffect(() => {
+    if (!model) return;
+    if (!Object.keys(stepStatuses).length) return;
+    setState((prev) => ({
+      ...prev,
+      activeProject: {
+        ...prev.activeProject,
+        projectId: model.projectId,
+        projectTitle: model.projectTitle,
+        material: model.material,
+        steps: model.steps.map((step) => step.whatToDo),
+        stepStatuses,
+        lastUpdatedAt: new Date().toISOString(),
+      },
+    }));
+  }, [model, setState, stepStatuses]);
+
+  const completedCount = useMemo(
+    () => Object.values(stepStatuses).filter((status) => status === "completed").length,
+    [stepStatuses],
+  );
+  const totalSteps = model?.steps.length ?? 0;
+  const progressPercent =
+    totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0;
 
   function saveProject() {
     if (!model) return;
-    const raw =
-      typeof window !== "undefined"
-        ? window.localStorage.getItem(SAVED_PROJECTS_KEY)
-        : null;
-    const existing = raw ? (JSON.parse(raw) as unknown[]) : [];
-    const next = [
-      {
-        title: model.projectTitle,
-        material: model.material,
-        savedAt: new Date().toISOString(),
+    const nextItem: SavedProjectState = {
+      title: model.projectTitle,
+      material: model.material,
+      progress: {
+        completed: completedCount,
+        total: totalSteps,
       },
-      ...existing,
-    ];
-    window.localStorage.setItem(SAVED_PROJECTS_KEY, JSON.stringify(next.slice(0, 20)));
+      stepStatuses,
+      savedAt: new Date().toISOString(),
+    };
+    const nextProjects = [nextItem, ...state.savedProjects].slice(0, 20);
+    const completedBuilds = nextProjects.filter((project) => {
+      const completed = Number(project.progress?.completed ?? 0);
+      const total = Number(project.progress?.total ?? 0);
+      return total > 0 && completed >= total;
+    }).length;
+    setState((prev) => ({
+      ...prev,
+      savedProjects: nextProjects,
+      profileStats: {
+        ...prev.profileStats,
+        totalStarted: nextProjects.length,
+        completedBuilds,
+        savedIdeas: prev.analysis.latest?.result.ideas.length ?? prev.profileStats.savedIdeas,
+      },
+    }));
     setSaveNotice("Project saved. You can continue from here anytime.");
+  }
+
+  function setStepStatus(stepNumber: number, status: StepStatus) {
+    setStepStatuses((prev) => ({ ...prev, [stepNumber]: status }));
+    if (status !== "completed") {
+      setExpandedCompleted((prev) => ({ ...prev, [stepNumber]: false }));
+    }
+  }
+
+  function toggleCompletedDetail(stepNumber: number) {
+    setExpandedCompleted((prev) => ({ ...prev, [stepNumber]: !prev[stepNumber] }));
   }
 
   function buildMockHelpResponse(action: string, question: string): string {
@@ -331,7 +384,47 @@ export default function ProjectGuidePage() {
     helpPanelRef.current?.focus();
   }
 
-  if (loading) {
+  function renderResourceGroup(title: string, resources: LearningResource[]) {
+    return (
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-foreground/65">
+          {title}
+        </p>
+        {resources.length === 0 ? (
+          <p className="mt-2 text-sm text-foreground/70">
+            Resources will appear here once available.
+          </p>
+        ) : (
+          <div className="mt-2 grid gap-2">
+            {resources.map((resource) => (
+              <div key={resource.title} className="rounded-xl bg-muted/60 p-4 ring-1 ring-border">
+                <p className="text-sm font-semibold">{resource.title}</p>
+                <p className="mt-1 text-sm text-foreground/75">{resource.description}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-foreground/70">
+                  <span className="rounded-full bg-card px-2 py-1 ring-1 ring-border">
+                    {resource.skillType}
+                  </span>
+                  <span>{resource.estimatedTime}</span>
+                </div>
+                <div className="mt-3">
+                  <a
+                    href={resource.link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={buttonStyles({ size: "sm", variant: "outline" })}
+                  >
+                    Open resource
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (!hydrated) {
     return (
       <PageShell>
         <PageHeader
@@ -347,7 +440,7 @@ export default function ProjectGuidePage() {
     );
   }
 
-  if (!hasData || !model) {
+  if (!state.analysis.latest || !model) {
     return (
       <PageShell>
         <PageHeader
@@ -374,6 +467,20 @@ export default function ProjectGuidePage() {
         <Card className="p-6">
           <p className="text-sm font-semibold">Project overview</p>
           <p className="mt-2 text-lg font-semibold">{model.projectTitle}</p>
+          <div className="mt-4 rounded-xl bg-muted/50 p-4 ring-1 ring-border">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium">Project progress</p>
+              <p className="text-sm text-foreground/75">
+                {completedCount} of {totalSteps} steps completed
+              </p>
+            </div>
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-card ring-1 ring-border">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-300"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
           <div className="mt-3 grid gap-2 text-sm text-foreground/80 sm:grid-cols-2">
             <p>
               <span className="font-semibold">Estimated time:</span> {model.totalTime}
@@ -401,44 +508,118 @@ export default function ProjectGuidePage() {
 
         <Card className="p-6">
           <p className="text-sm font-semibold">Step-by-step making guide</p>
-          <div className="mt-4 grid gap-3">
-            {model.steps.map((step) => (
+          {model.steps.length === 0 ? (
+            <p className="mt-3 text-sm text-foreground/70">
+              No custom steps available yet. Start with basic cleanup, sorting, assembly, and testing.
+            </p>
+          ) : (
+            <div className="mt-4 grid gap-3">
+              {model.steps.map((step) => (
               <div
                 key={step.stepNumber}
-                className="rounded-xl bg-muted/60 p-4 ring-1 ring-border"
+                className={
+                  stepStatuses[step.stepNumber] === "completed"
+                    ? "rounded-xl bg-primary/5 p-4 ring-1 ring-primary/25"
+                    : "rounded-xl bg-muted/60 p-4 ring-1 ring-border"
+                }
               >
                 <div className="flex items-start gap-3">
                   <div
                     className={
-                      step.completed
+                      stepStatuses[step.stepNumber] === "completed"
                         ? "mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
                         : "mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-card text-xs font-semibold ring-1 ring-border"
                     }
                   >
-                    {step.stepNumber}
+                    {stepStatuses[step.stepNumber] === "completed" ? "✓" : step.stepNumber}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">{step.shortTitle}</p>
-                    <p className="mt-1 text-sm text-foreground/75">{step.whatToDo}</p>
-                    <div className="mt-3 grid gap-2 text-xs text-foreground/70 sm:grid-cols-2">
-                      <p>
-                        <span className="font-semibold text-foreground">Tools needed:</span>{" "}
-                        {step.toolsNeeded}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-foreground">Estimated time:</span>{" "}
-                        {step.estimatedTime}
-                      </p>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-semibold">{step.shortTitle}</p>
+                      <span className="rounded-full bg-card px-2 py-1 text-[11px] font-semibold ring-1 ring-border">
+                        {stepStatuses[step.stepNumber] === "completed"
+                          ? "Completed"
+                          : stepStatuses[step.stepNumber] === "in_progress"
+                            ? "In progress"
+                            : "Not started"}
+                      </span>
                     </div>
-                    <p className="mt-2 text-xs text-foreground/70">
-                      <span className="font-semibold text-foreground">Tip:</span>{" "}
-                      {step.cautionTip}
-                    </p>
+                    {stepStatuses[step.stepNumber] === "completed" &&
+                    !expandedCompleted[step.stepNumber] ? (
+                      <button
+                        className="mt-2 text-xs font-semibold text-foreground/70 underline-offset-2 hover:underline"
+                        onClick={() => toggleCompletedDetail(step.stepNumber)}
+                      >
+                        Show step details
+                      </button>
+                    ) : (
+                      <>
+                        <p className="mt-1 text-sm text-foreground/75">{step.whatToDo}</p>
+                        <div className="mt-3 grid gap-2 text-xs text-foreground/70 sm:grid-cols-2">
+                          <p>
+                            <span className="font-semibold text-foreground">Tools needed:</span>{" "}
+                            {step.toolsNeeded}
+                          </p>
+                          <p>
+                            <span className="font-semibold text-foreground">Estimated time:</span>{" "}
+                            {step.estimatedTime}
+                          </p>
+                        </div>
+                        <p className="mt-2 text-xs text-foreground/70">
+                          <span className="font-semibold text-foreground">Tip:</span>{" "}
+                          {step.cautionTip}
+                        </p>
+                        {stepStatuses[step.stepNumber] === "completed" ? (
+                          <button
+                            className="mt-2 text-xs font-semibold text-foreground/70 underline-offset-2 hover:underline"
+                            onClick={() => toggleCompletedDetail(step.stepNumber)}
+                          >
+                            Hide details
+                          </button>
+                        ) : null}
+                      </>
+                    )}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant={
+                          stepStatuses[step.stepNumber] === "not_started"
+                            ? "secondary"
+                            : "outline"
+                        }
+                        onClick={() => setStepStatus(step.stepNumber, "not_started")}
+                      >
+                        Not started
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={
+                          stepStatuses[step.stepNumber] === "in_progress"
+                            ? "secondary"
+                            : "outline"
+                        }
+                        onClick={() => setStepStatus(step.stepNumber, "in_progress")}
+                      >
+                        In progress
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={
+                          stepStatuses[step.stepNumber] === "completed"
+                            ? "secondary"
+                            : "outline"
+                        }
+                        onClick={() => setStepStatus(step.stepNumber, "completed")}
+                      >
+                        Completed
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Card>
 
         <div className="grid gap-4 lg:grid-cols-2">
@@ -462,104 +643,9 @@ export default function ProjectGuidePage() {
           <Card className="p-6">
             <p className="text-sm font-semibold">Resources to learn</p>
             <div className="mt-3 grid gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-foreground/65">
-                  Basic concepts
-                </p>
-                <div className="mt-2 grid gap-2">
-                  {model.resources.basicConcepts.map((resource) => (
-                    <div
-                      key={resource.title}
-                      className="rounded-xl bg-muted/60 p-4 ring-1 ring-border"
-                    >
-                      <p className="text-sm font-semibold">{resource.title}</p>
-                      <p className="mt-1 text-sm text-foreground/75">{resource.description}</p>
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-foreground/70">
-                        <span className="rounded-full bg-card px-2 py-1 ring-1 ring-border">
-                          {resource.skillType}
-                        </span>
-                        <span>{resource.estimatedTime}</span>
-                      </div>
-                      <div className="mt-3">
-                        <a
-                          href={resource.link}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={buttonStyles({ size: "sm", variant: "outline" })}
-                        >
-                          Open resource
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-foreground/65">
-                  Practical making skills
-                </p>
-                <div className="mt-2 grid gap-2">
-                  {model.resources.practicalSkills.map((resource) => (
-                    <div
-                      key={resource.title}
-                      className="rounded-xl bg-muted/60 p-4 ring-1 ring-border"
-                    >
-                      <p className="text-sm font-semibold">{resource.title}</p>
-                      <p className="mt-1 text-sm text-foreground/75">{resource.description}</p>
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-foreground/70">
-                        <span className="rounded-full bg-card px-2 py-1 ring-1 ring-border">
-                          {resource.skillType}
-                        </span>
-                        <span>{resource.estimatedTime}</span>
-                      </div>
-                      <div className="mt-3">
-                        <a
-                          href={resource.link}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={buttonStyles({ size: "sm", variant: "outline" })}
-                        >
-                          Open resource
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-foreground/65">
-                  Safety and tool usage
-                </p>
-                <div className="mt-2 grid gap-2">
-                  {model.resources.safetyAndTools.map((resource) => (
-                    <div
-                      key={resource.title}
-                      className="rounded-xl bg-muted/60 p-4 ring-1 ring-border"
-                    >
-                      <p className="text-sm font-semibold">{resource.title}</p>
-                      <p className="mt-1 text-sm text-foreground/75">{resource.description}</p>
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-foreground/70">
-                        <span className="rounded-full bg-card px-2 py-1 ring-1 ring-border">
-                          {resource.skillType}
-                        </span>
-                        <span>{resource.estimatedTime}</span>
-                      </div>
-                      <div className="mt-3">
-                        <a
-                          href={resource.link}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={buttonStyles({ size: "sm", variant: "outline" })}
-                        >
-                          Open resource
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {renderResourceGroup("Basic concepts", model.resources.basicConcepts)}
+              {renderResourceGroup("Practical making skills", model.resources.practicalSkills)}
+              {renderResourceGroup("Safety and tool usage", model.resources.safetyAndTools)}
             </div>
           </Card>
         </div>

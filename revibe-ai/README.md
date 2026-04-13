@@ -69,3 +69,30 @@ After frontend deploy, ensure backend env is updated:
 - `CORS_ORIGINS` includes frontend origin
 - `FRONTEND_BASE_URL` equals deployed frontend origin
 - GitHub OAuth app callback URL points to backend callback route
+
+## Persistence and Autosave
+
+Frontend persistence is centralized and UI-safe:
+
+- App state cache: `src/lib/appState.tsx`
+- Storage abstraction layer: `src/lib/userDataStore.ts`
+- Storage utilities: `src/lib/storage.ts`
+
+Implemented local persistence APIs:
+
+- `getUserData`
+- `saveUserData`
+- `saveProject`
+- `loadProjects`
+- `updateProjectProgress`
+- `clearUserData`
+
+Autosave behavior:
+
+- Debounced autosave for typing and form input changes
+- Immediate save for key actions (analysis completion, project selection, progress updates, saved projects)
+- Save status support in state (`saving`, `saved`, `all_saved`)
+
+Future-ready note:
+
+The UI does not hardcode localStorage access directly for user journey data. The storage abstraction can be switched to authenticated backend persistence later with minimal UI changes.

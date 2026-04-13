@@ -20,6 +20,7 @@ Revibe AI addresses this with a beginner-friendly product flow: upload -> analyz
 4. Community posting flow backed by lightweight JSON storage
 5. GitHub OAuth integration for public developer identity on profile
 6. Deployment-ready split architecture (Next.js frontend + Express backend)
+7. Centralized client persistence with autosave, resume flow, and reset controls
 
 ## Core Features
 
@@ -119,6 +120,26 @@ See:
 3. No private GitHub repository access
 4. Nearby resources use curated sample points (not live geolocation search)
 5. Image generation is intentionally paused
+6. User persistence is currently browser-local (localStorage abstraction), not account-linked cloud storage
+
+## Persistence Architecture (Frontend)
+
+Revibe now uses a storage abstraction that can be swapped to backend/database storage later without rewriting UI components.
+
+1. Central app state provider: `revibe-ai/src/lib/appState.tsx`
+2. Storage abstraction: `revibe-ai/src/lib/userDataStore.ts`
+3. Low-level storage helpers: `revibe-ai/src/lib/storage.ts`
+
+Current implementation:
+
+- `getUserData`
+- `saveUserData`
+- `saveProject`
+- `loadProjects`
+- `updateProjectProgress`
+- `clearUserData`
+
+This currently persists to localStorage, but the same interfaces are ready to map to authenticated API/database operations.
 
 ## Future Enhancements
 

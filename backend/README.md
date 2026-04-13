@@ -79,3 +79,12 @@ npm run start
    - `CORS_ORIGINS` includes local + deployed frontend origins
    - `GITHUB_REDIRECT_URI=https://<your-backend-domain>/api/github/callback`
 5. In GitHub OAuth App settings, set callback URL to the same backend callback URL.
+
+## Note on User Persistence
+
+Current user journey persistence (analysis cache, project progress, saved projects) is handled in the frontend with a storage abstraction layer.
+
+- Current adapter: browser localStorage
+- Planned adapter: authenticated backend/database storage via API
+
+This separation allows frontend UX and state flows to stay stable when cloud persistence is introduced.

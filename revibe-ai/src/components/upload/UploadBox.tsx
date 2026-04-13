@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Card } from "@/components/ui/Card";
@@ -9,19 +9,27 @@ import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/lib/cn";
 import { analyzeItem } from "@/lib/api";
 import { saveLatestAnalysis } from "@/lib/analysisSession";
+import { useAppState, type AnalysisCardState } from "@/lib/appState";
 
 const ACCEPTED = ["image/png", "image/jpeg", "image/webp", "image/heic"];
 const DEFAULT_CATEGORY = "Utility";
+const RESTORE_COPY =
+  "Your previous analysis was restored. Re-upload the image if you want to analyze it again.";
 
-type ReuseAnalysisCard = {
-  materialIdentified: string;
-  suggestedCategory: string;
-  reusePotential: string;
-  difficulty: string;
-  budgetEstimate: string;
-  safetyNote: string;
-  quickSummary: string;
-};
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error("Could not generate image preview."));
+    };
+    reader.onerror = () => reject(new Error("Could not read selected image."));
+    reader.readAsDataURL(file);
+  });
+}
 
 function inferMaterialFromText(input: string): string {
   const value = input.toLowerCase();
@@ -51,6 +59,7 @@ function mapSafetyNote(risk: string): string {
 
 export function UploadBox() {
   const router = useRouter();
+  const { state, setState } = useAppState();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const materialInputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -58,33 +67,31 @@ export function UploadBox() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [analyzeSuccess, setAnalyzeSuccess] = useState<string | null>(null);
-  const [material, setMaterial] = useState("");
-  const [category, setCategory] = useState("");
-  const [complexity, setComplexity] = useState("");
-  const [budget, setBudget] = useState("");
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [latestBackendResult, setLatestBackendResult] = useState<{
     itemName: string;
     result: Awaited<ReturnType<typeof analyzeItem>>["data"];
   } | null>(null);
-  const [analysisCard, setAnalysisCard] = useState<ReuseAnalysisCard | null>(null);
+  const [isStartingProject, setIsStartingProject] = useState(false);
+  const { material, category, complexity, budget, imageMetadata, sessionPreviewUrl, thumbnailDataUrl } =
+    state.uploadInput;
+  const analysisCard = state.analysis.card;
 
-  const previewUrl = useMemo(() => {
-    if (!file) return null;
-    return URL.createObjectURL(file);
-  }, [file]);
+  const previewUrl = sessionPreviewUrl || thumbnailDataUrl;
 
   useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
+    if (!state.analysis.latest) return;
+    setLatestBackendResult({
+      itemName: state.analysis.latest.itemName,
+      result: state.analysis.latest.result,
+    });
+  }, [state.analysis.latest]);
 
   function pickFile() {
     inputRef.current?.click();
   }
 
-  function onFiles(files: FileList | null) {
+  async function onFiles(files: FileList | null) {
     const next = files?.[0] ?? null;
     if (!next) return;
     if (!ACCEPTED.includes(next.type)) {
@@ -92,21 +99,60 @@ export function UploadBox() {
       return;
     }
     setFile(next);
+    if (sessionPreviewUrl?.startsWith("blob:")) {
+      URL.revokeObjectURL(sessionPreviewUrl);
+    }
+    const nextSessionPreview = URL.createObjectURL(next);
+    let nextThumbnailDataUrl: string | null = null;
+    try {
+      nextThumbnailDataUrl = await fileToDataUrl(next);
+    } catch {
+      nextThumbnailDataUrl = null;
+    }
+    setState((prev) => ({
+      ...prev,
+      uploadInput: {
+        ...prev.uploadInput,
+        imageMetadata: {
+          name: next.name,
+          size: next.size,
+          type: next.type,
+          lastModified: next.lastModified,
+        },
+        sessionPreviewUrl: nextSessionPreview,
+        thumbnailDataUrl: nextThumbnailDataUrl,
+      },
+    }));
     setAnalyzeError(null);
     setAnalyzeSuccess(null);
   }
 
   function clear() {
+    if (sessionPreviewUrl?.startsWith("blob:")) {
+      URL.revokeObjectURL(sessionPreviewUrl);
+    }
     setFile(null);
-    setMaterial("");
-    setCategory("");
-    setComplexity("");
-    setBudget("");
     setLatestBackendResult(null);
-    setAnalysisCard(null);
     setAnalyzeError(null);
     setAnalyzeSuccess(null);
     setShowAdvancedOptions(false);
+    setState((prev) => ({
+      ...prev,
+      uploadInput: {
+        imageMetadata: null,
+        sessionPreviewUrl: null,
+        thumbnailDataUrl: null,
+        material: "",
+        category: "",
+        complexity: "",
+        budget: "",
+      },
+      analysis: {
+        ...prev.analysis,
+        card: null,
+        sourceImage: null,
+      },
+    }));
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -168,7 +214,7 @@ export function UploadBox() {
         itemName,
         result: response.data,
       });
-      setAnalysisCard({
+      const nextCard: AnalysisCardState = {
         materialIdentified,
         suggestedCategory,
         reusePotential,
@@ -176,7 +222,20 @@ export function UploadBox() {
         budgetEstimate,
         safetyNote,
         quickSummary,
-      });
+      };
+      setState((prev) => ({
+        ...prev,
+        analysis: {
+          latest: {
+            itemName,
+            result: response.data,
+            createdAt: new Date().toISOString(),
+          },
+          card: nextCard,
+          selectedProjectIdea: response.data.ideas[0] ?? null,
+          sourceImage: prev.uploadInput.imageMetadata,
+        },
+      }));
       setAnalyzeSuccess("Analysis ready. You can now start your project.");
     } catch (error) {
       const message =
@@ -190,14 +249,37 @@ export function UploadBox() {
     }
   }
 
-  function startProject() {
+  async function startProject() {
     if (!latestBackendResult) return;
-    saveLatestAnalysis({
-      itemName: latestBackendResult.itemName,
-      result: latestBackendResult.result,
-      createdAt: new Date().toISOString(),
-    });
-    router.push("/project-guide");
+    setIsStartingProject(true);
+    setAnalyzeError(null);
+    try {
+      saveLatestAnalysis({
+        itemName: latestBackendResult.itemName,
+        result: latestBackendResult.result,
+        createdAt: new Date().toISOString(),
+      });
+      setState((prev) => ({
+        ...prev,
+        activeProject: {
+          ...prev.activeProject,
+          projectId: `${latestBackendResult.itemName}::${latestBackendResult.result.material}`,
+          projectTitle: `${latestBackendResult.result.material} Starter Reuse Project`,
+          material: latestBackendResult.result.material,
+          steps: latestBackendResult.result.steps ?? [],
+          lastUpdatedAt: new Date().toISOString(),
+        },
+      }));
+      router.push("/project-guide");
+    } catch (error) {
+      setAnalyzeError(
+        error instanceof Error
+          ? error.message
+          : "Could not start the project right now. Please try again.",
+      );
+    } finally {
+      setIsStartingProject(false);
+    }
   }
 
   function focusMaterialInput() {
@@ -313,7 +395,12 @@ export function UploadBox() {
               id="material-input"
               ref={materialInputRef}
               value={material}
-              onChange={(e) => setMaterial(e.target.value)}
+              onChange={(e) =>
+                setState((prev) => ({
+                  ...prev,
+                  uploadInput: { ...prev.uploadInput, material: e.target.value },
+                }))
+              }
               placeholder="Example: old keyboard, plastic bottle, broken fan, laptop motherboard"
               className="mt-2 h-11 w-full rounded-xl bg-card px-4 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
@@ -341,7 +428,12 @@ export function UploadBox() {
                   <select
                     id="category-select"
                     value={category}
-                    onChange={(e) => setCategory(e.target.value)}
+                    onChange={(e) =>
+                      setState((prev) => ({
+                        ...prev,
+                        uploadInput: { ...prev.uploadInput, category: e.target.value },
+                      }))
+                    }
                     className="mt-1 h-11 w-full rounded-xl bg-card px-3 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <option value="">Select category</option>
@@ -364,7 +456,12 @@ export function UploadBox() {
                   <select
                     id="complexity-select"
                     value={complexity}
-                    onChange={(e) => setComplexity(e.target.value)}
+                    onChange={(e) =>
+                      setState((prev) => ({
+                        ...prev,
+                        uploadInput: { ...prev.uploadInput, complexity: e.target.value },
+                      }))
+                    }
                     className="mt-1 h-11 w-full rounded-xl bg-card px-3 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <option value="">Select complexity</option>
@@ -384,7 +481,12 @@ export function UploadBox() {
                   <input
                     id="budget-input"
                     value={budget}
-                    onChange={(e) => setBudget(e.target.value)}
+                    onChange={(e) =>
+                      setState((prev) => ({
+                        ...prev,
+                        uploadInput: { ...prev.uploadInput, budget: e.target.value },
+                      }))
+                    }
                     inputMode="numeric"
                     placeholder="Enter max budget in ₹"
                     className="mt-1 h-11 w-full rounded-xl bg-card px-3 text-sm ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -408,6 +510,11 @@ export function UploadBox() {
               {file ? (
                 <>
                   {file.name} · {(file.size / 1024 / 1024).toFixed(2)} MB
+                </>
+              ) : imageMetadata ? (
+                <>
+                  Last upload: {imageMetadata.name} ·{" "}
+                  {(imageMetadata.size / 1024 / 1024).toFixed(2)} MB
                 </>
               ) : (
                 "No file selected yet. You can still continue with typed material."
@@ -433,6 +540,10 @@ export function UploadBox() {
         {analyzeSuccess ? (
           <p className="mt-3 text-sm text-emerald-700" role="status">
             {analyzeSuccess}
+          </p>
+        ) : !file && imageMetadata && analysisCard ? (
+          <p className="mt-3 text-sm text-amber-700" role="status">
+            {RESTORE_COPY}
           </p>
         ) : (
           <p className="mt-3 text-xs text-foreground/60">
@@ -496,7 +607,9 @@ export function UploadBox() {
               </p>
             </div>
             <div className="mt-4">
-              <Button onClick={startProject}>Start Project</Button>
+              <Button onClick={startProject} disabled={isStartingProject}>
+                {isStartingProject ? "Opening guide..." : "Start Project"}
+              </Button>
             </div>
             <p className="mt-2 text-xs text-foreground/60">
               Next, you will get guided steps and in-flow AI help.

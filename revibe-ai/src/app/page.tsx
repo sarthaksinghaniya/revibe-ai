@@ -7,6 +7,7 @@ import { PageShell } from "@/components/layout/PageShell";
 import { Card } from "@/components/ui/Card";
 import { buttonStyles } from "@/components/ui/Button";
 import { FeatureCard } from "@/components/cards/FeatureCard";
+import { ResumeProjectCard } from "@/components/shared/ResumeProjectCard";
 import { featureQuickCards } from "@/data/mockFeatures";
 import { getHealth } from "@/lib/api";
 
@@ -115,6 +116,8 @@ export default function Home() {
             />
           ))}
         </section>
+
+        <ResumeProjectCard />
       </div>
     </PageShell>
   );
