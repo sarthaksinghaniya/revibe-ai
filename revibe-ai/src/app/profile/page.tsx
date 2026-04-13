@@ -1,6 +1,6 @@
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { GitHubConnectCard } from "@/components/profile/GitHubConnectCard";
+import GitHubConnectCard from "@/components/profile/GitHubConnectCard";
 
 export default function ProfilePage() {
   return (

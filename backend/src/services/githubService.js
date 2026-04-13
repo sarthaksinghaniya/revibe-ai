@@ -195,7 +195,6 @@ export function buildGitHubOAuthAuthorizeUrl({ state }) {
   ensureOAuthConfig();
   const url = new URL("https://github.com/login/oauth/authorize");
   url.searchParams.set("client_id", env.GITHUB_CLIENT_ID);
-  url.searchParams.set("redirect_uri", env.GITHUB_REDIRECT_URI);
   url.searchParams.set("scope", "read:user");
   url.searchParams.set("state", state);
   return url.toString();
@@ -217,7 +216,6 @@ export async function exchangeGitHubCodeForToken({ code, state, requestId }) {
         client_id: env.GITHUB_CLIENT_ID,
         client_secret: env.GITHUB_CLIENT_SECRET,
         code,
-        redirect_uri: env.GITHUB_REDIRECT_URI,
         state,
       }),
     });

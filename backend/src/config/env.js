@@ -54,7 +54,7 @@ function resolveNodeEnv() {
 
 export const env = {
   NODE_ENV: resolveNodeEnv(),
-  HOST: readEnv("HOST", "0.0.0.0"),
+  HOST: readEnv("HOST", "localhost"),
   PORT: readNumber("PORT", 4000),
   CORS_ORIGINS: resolveCorsOrigins(),
   GROQ_API_KEY: readEnv("GROQ_API_KEY", ""),

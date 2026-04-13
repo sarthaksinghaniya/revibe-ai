@@ -80,6 +80,26 @@ function buildFrontendRedirect(baseUrl, params) {
   return url.toString();
 }
 
+githubRouter.get("/config", (req, res) => {
+  const requestId = req.requestId ?? "unknown";
+  const hasClientId = Boolean(env.GITHUB_CLIENT_ID);
+  const hasClientSecret = Boolean(env.GITHUB_CLIENT_SECRET);
+  const hasRedirectUri = Boolean(env.GITHUB_REDIRECT_URI);
+  const configured = hasClientId && hasClientSecret && hasRedirectUri;
+
+  res.json({
+    success: true,
+    data: {
+      configured,
+      hasClientId,
+      hasClientSecret,
+      hasRedirectUri,
+      redirectUri: env.GITHUB_REDIRECT_URI || null,
+    },
+    meta: { requestId },
+  });
+});
+
 githubRouter.get("/auth", async (req, res, next) => {
   try {
     const requestId = req.requestId ?? "unknown";
@@ -94,7 +114,25 @@ githubRouter.get("/auth", async (req, res, next) => {
     logInfo("github.oauth.auth.redirect", { requestId, returnTo });
     res.redirect(authorizeUrl);
   } catch (error) {
-    next(error);
+    const requestId = req.requestId ?? "unknown";
+    const returnTo = resolveFrontendReturn(String(req.query.redirect ?? ""));
+    const message =
+      error instanceof Error ? error.message : "GitHub OAuth startup failed.";
+
+    logWarn("github.oauth.auth.failed", {
+      requestId,
+      reason: message,
+    });
+
+    if (String(req.query.mode ?? "") === "json") {
+      return next(error);
+    }
+
+    const errorRedirect = buildFrontendRedirect(returnTo, {
+      github_oauth: "error",
+      github_error: message,
+    });
+    return res.redirect(errorRedirect);
   }
 });
 
@@ -110,12 +148,28 @@ githubRouter.get("/callback", async (req, res, next) => {
     const savedReturnTo = decodeURIComponent(cookies[OAUTH_RETURN_COOKIE] ?? "");
     const returnTo = resolveFrontendReturn(savedReturnTo);
 
+    logInfo("github.oauth.callback.received", {
+      requestId,
+      hasCode: Boolean(code),
+      hasState: Boolean(state),
+      denied: Boolean(deniedError),
+      returnTo,
+    });
+
     clearOAuthCookies(res);
 
     if (deniedError) {
       const deniedRedirect = buildFrontendRedirect(returnTo, {
+        github: "error",
+        github_error: "oauth_denied",
+        github_error_message: "GitHub access was denied by the user.",
+        github_success: "0",
         github_oauth: "error",
-        github_error: "GitHub access was denied by the user.",
+        github_oauth_message: "GitHub access was denied by the user.",
+      });
+      logWarn("github.oauth.callback.redirect_denied", {
+        requestId,
+        redirectTo: deniedRedirect,
       });
       return res.redirect(deniedRedirect);
     }
@@ -137,6 +191,7 @@ githubRouter.get("/callback", async (req, res, next) => {
     }
 
     const accessToken = await exchangeGitHubCodeForToken({ code, state, requestId });
+    logInfo("github.oauth.token_exchange.succeeded", { requestId });
     const data = await fetchGitHubOAuthUserData({ accessToken, requestId });
 
     logInfo("github.oauth.callback.succeeded", {
@@ -154,8 +209,14 @@ githubRouter.get("/callback", async (req, res, next) => {
     }
 
     const successRedirect = buildFrontendRedirect(returnTo, {
+      github: "connected",
+      github_success: "1",
       github_oauth: "success",
       github_data: encodePayload(data),
+    });
+    logInfo("github.oauth.callback.redirect_success", {
+      requestId,
+      redirectTo: successRedirect,
     });
     return res.redirect(successRedirect);
   } catch (error) {
@@ -178,8 +239,16 @@ githubRouter.get("/callback", async (req, res, next) => {
     }
 
     const errorRedirect = buildFrontendRedirect(returnTo, {
+      github: "error",
+      github_success: "0",
+      github_error: "oauth_failed",
+      github_error_message: message,
       github_oauth: "error",
-      github_error: message,
+      github_oauth_message: message,
+    });
+    logWarn("github.oauth.callback.redirect_error", {
+      requestId,
+      redirectTo: errorRedirect,
     });
     return res.redirect(errorRedirect);
   }

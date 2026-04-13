@@ -27,7 +27,6 @@ const LINKED_REPOS_STORAGE_KEY = "revibe.github.linkedRepoIdsByUsername";
 const CONNECTED_GITHUB_STORAGE_KEY = "revibe.github.connectedProfile";
 
 function readLinkedRepoMap(): Record<string, number[]> {
-  if (typeof window === "undefined") return {};
   const raw = window.localStorage.getItem(LINKED_REPOS_STORAGE_KEY);
   if (!raw) return {};
 
@@ -40,12 +39,10 @@ function readLinkedRepoMap(): Record<string, number[]> {
 }
 
 function writeLinkedRepoMap(value: Record<string, number[]>) {
-  if (typeof window === "undefined") return;
   window.localStorage.setItem(LINKED_REPOS_STORAGE_KEY, JSON.stringify(value));
 }
 
 function readPersistedGitHubData(): OAuthGitHubData | null {
-  if (typeof window === "undefined") return null;
   const raw = window.localStorage.getItem(CONNECTED_GITHUB_STORAGE_KEY);
   if (!raw) return null;
 
@@ -59,7 +56,6 @@ function readPersistedGitHubData(): OAuthGitHubData | null {
 }
 
 function writePersistedGitHubData(value: OAuthGitHubData | null) {
-  if (typeof window === "undefined") return;
   if (!value) {
     window.localStorage.removeItem(CONNECTED_GITHUB_STORAGE_KEY);
     return;
@@ -74,20 +70,14 @@ function decodeOAuthPayload(encoded: string): OAuthGitHubData {
   return JSON.parse(json) as OAuthGitHubData;
 }
 
-function deriveInitialState(): InitialGitHubState {
-  if (typeof window === "undefined") {
-    return {
-      githubData: null,
-      linkedRepoIds: [],
-      error: null,
-      notice: null,
-      hadOAuthParams: false,
-    };
-  }
-
+function deriveInitialStateFromBrowser(): InitialGitHubState {
   const url = new URL(window.location.href);
+  const githubStatus = url.searchParams.get("github");
+  const githubSuccess = url.searchParams.get("github_success");
+  const githubErrorCode = url.searchParams.get("github_error");
+  const githubErrorMessage = url.searchParams.get("github_error_message");
   const oauthStatus = url.searchParams.get("github_oauth");
-  const oauthError = url.searchParams.get("github_error");
+  const oauthError = url.searchParams.get("github_oauth_message");
   const oauthData = url.searchParams.get("github_data");
 
   if (oauthStatus === "success" && oauthData) {
@@ -120,7 +110,26 @@ function deriveInitialState(): InitialGitHubState {
     return {
       githubData: null,
       linkedRepoIds: [],
-      error: oauthError || "GitHub authentication failed. Please try again.",
+      error:
+        githubErrorMessage ||
+        oauthError ||
+        (githubErrorCode === "oauth_denied"
+          ? "GitHub access was denied by the user."
+          : "GitHub authentication failed. Please try again."),
+      notice: null,
+      hadOAuthParams: true,
+    };
+  }
+
+  if (githubStatus === "error" || githubSuccess === "0" || githubErrorCode) {
+    return {
+      githubData: null,
+      linkedRepoIds: [],
+      error:
+        githubErrorMessage ||
+        (githubErrorCode === "oauth_denied"
+          ? "GitHub access was denied by the user."
+          : "GitHub authentication failed. Please try again."),
       notice: null,
       hadOAuthParams: true,
     };
@@ -150,15 +159,13 @@ function deriveInitialState(): InitialGitHubState {
   };
 }
 
-export function GitHubConnectCard() {
-  const [initialState] = useState<InitialGitHubState>(deriveInitialState);
-  const [githubData, setGithubData] = useState<OAuthGitHubData | null>(
-    initialState.githubData
-  );
-  const [linkedRepoIds, setLinkedRepoIds] = useState<number[]>(initialState.linkedRepoIds);
+export default function GitHubConnectCard() {
+  const [mounted, setMounted] = useState(false);
+  const [githubData, setGithubData] = useState<OAuthGitHubData | null>(null);
+  const [linkedRepoIds, setLinkedRepoIds] = useState<number[]>([]);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [error, setError] = useState<string | null>(initialState.error);
-  const [notice, setNotice] = useState<string | null>(initialState.notice);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const linkedRepos = useMemo(() => {
     if (!githubData) return [];
@@ -166,28 +173,53 @@ export function GitHubConnectCard() {
   }, [githubData, linkedRepoIds]);
 
   useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setMounted(true);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    const initialState = deriveInitialStateFromBrowser();
+    queueMicrotask(() => {
+      setGithubData(initialState.githubData);
+      setLinkedRepoIds(initialState.linkedRepoIds);
+      setError(initialState.error);
+      setNotice(initialState.notice);
+    });
+
+    if (!initialState.hadOAuthParams) return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("github");
+    url.searchParams.delete("github_success");
+    url.searchParams.delete("github_oauth");
+    url.searchParams.delete("github_error");
+    url.searchParams.delete("github_error_message");
+    url.searchParams.delete("github_oauth_message");
+    url.searchParams.delete("github_data");
+    window.history.replaceState({}, "", url.toString());
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
     if (!githubData?.username) return;
     const map = readLinkedRepoMap();
     map[githubData.username] = linkedRepoIds;
     writeLinkedRepoMap(map);
-  }, [githubData, linkedRepoIds]);
+  }, [githubData, linkedRepoIds, mounted]);
 
   useEffect(() => {
+    if (!mounted) return;
     writePersistedGitHubData(githubData);
-  }, [githubData]);
-
-  useEffect(() => {
-    if (!initialState.hadOAuthParams || typeof window === "undefined") return;
-
-    const url = new URL(window.location.href);
-    url.searchParams.delete("github_oauth");
-    url.searchParams.delete("github_error");
-    url.searchParams.delete("github_data");
-    window.history.replaceState({}, "", url.toString());
-  }, [initialState.hadOAuthParams]);
+  }, [githubData, mounted]);
 
   function startOAuthFlow() {
-    if (typeof window === "undefined") return;
     setIsRedirecting(true);
     setError(null);
     setNotice(null);
@@ -208,6 +240,16 @@ export function GitHubConnectCard() {
   function toggleLinkedRepo(repoId: number) {
     setLinkedRepoIds((prev) =>
       prev.includes(repoId) ? prev.filter((id) => id !== repoId) : [...prev, repoId]
+    );
+  }
+
+  if (!mounted) {
+    return (
+      <Card className="p-6 sm:p-7">
+        <div className="mt-4 rounded-2xl bg-muted/60 p-4 ring-1 ring-border">
+          <p className="text-sm text-foreground/70">Loading GitHub connection...</p>
+        </div>
+      </Card>
     );
   }
 

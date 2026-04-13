@@ -19,7 +19,7 @@ cp .env.example .env
 Core:
 
 - `NODE_ENV=development|production`
-- `HOST=0.0.0.0`
+- `HOST=localhost`
 - `PORT=4000`
 - `CORS_ORIGINS=http://localhost:3000,https://your-frontend.vercel.app`
 - `FRONTEND_BASE_URL=http://localhost:3000`
@@ -35,6 +35,8 @@ GitHub:
 - `GITHUB_REDIRECT_URI=http://localhost:4000/api/github/callback`
 - `GITHUB_API_BASE_URL=https://api.github.com`
 - `GITHUB_REPOS_LIMIT=6`
+
+If `GITHUB_CLIENT_ID` or `GITHUB_CLIENT_SECRET` is missing, the OAuth connect route will redirect back to `/profile` with an explicit setup error.
 
 Security reminder:
 - Keep `GROQ_API_KEY` and `GITHUB_CLIENT_SECRET` in backend env only.
