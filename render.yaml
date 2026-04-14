@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: revibe-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: CORS_ORIGINS
+        value: https://revibe-hub.netlify.app,http://localhost:3000
+      - key: FRONTEND_BASE_URL
+        value: https://revibe-hub.netlify.app
+      - key: GITHUB_API_BASE_URL
+        value: https://api.github.com
+      - key: GITHUB_REPOS_LIMIT
+        value: "6"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GITHUB_CLIENT_ID_LOCAL
+        sync: false
+      - key: GITHUB_CLIENT_SECRET_LOCAL
+        sync: false
+      - key: GITHUB_REDIRECT_URI_LOCAL
+        sync: false
+      - key: GITHUB_CLIENT_ID_PROD
+        sync: false
+      - key: GITHUB_CLIENT_SECRET_PROD
+        sync: false
+      - key: GITHUB_REDIRECT_URI_PROD
+        sync: false
