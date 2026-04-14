@@ -52,8 +52,17 @@ function resolveNodeEnv() {
   return "development";
 }
 
+function readScopedEnv(baseKey, nodeEnv, fallback = "") {
+  const scopedKey = nodeEnv === "production" ? `${baseKey}_PROD` : `${baseKey}_LOCAL`;
+  const scoped = readEnv(scopedKey, "");
+  if (scoped) return scoped;
+  return readEnv(baseKey, fallback);
+}
+
+const nodeEnv = resolveNodeEnv();
+
 export const env = {
-  NODE_ENV: resolveNodeEnv(),
+  NODE_ENV: nodeEnv,
   HOST: readEnv("HOST", "0.0.0.0"),
   PORT: readNumber("PORT", 4000),
   CORS_ORIGINS: resolveCorsOrigins(),
@@ -61,10 +70,11 @@ export const env = {
   GITHUB_API_BASE_URL: readEnv("GITHUB_API_BASE_URL", "https://api.github.com"),
   GITHUB_REPOS_LIMIT: readNumber("GITHUB_REPOS_LIMIT", 6),
   FRONTEND_BASE_URL: readEnv("FRONTEND_BASE_URL", "http://localhost:3000"),
-  GITHUB_CLIENT_ID: readEnv("GITHUB_CLIENT_ID", ""),
-  GITHUB_CLIENT_SECRET: readEnv("GITHUB_CLIENT_SECRET", ""),
-  GITHUB_REDIRECT_URI: readEnv(
+  GITHUB_CLIENT_ID: readScopedEnv("GITHUB_CLIENT_ID", nodeEnv, ""),
+  GITHUB_CLIENT_SECRET: readScopedEnv("GITHUB_CLIENT_SECRET", nodeEnv, ""),
+  GITHUB_REDIRECT_URI: readScopedEnv(
     "GITHUB_REDIRECT_URI",
+    nodeEnv,
     "http://localhost:4000/api/github/callback"
   ),
 };
