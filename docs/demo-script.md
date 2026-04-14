@@ -1,5 +1,9 @@
 # Revibe AI Demo Script (3-5 Minutes)
 
+Live URLs:
+- Frontend: `https://revibe-hub.netlify.app/`
+- Backend: `https://revibe-ai.onrender.com`
+
 ## 1. Opening (20-30 sec)
 
 1. "Revibe AI helps users turn e-waste into practical, beginner-friendly reuse projects."

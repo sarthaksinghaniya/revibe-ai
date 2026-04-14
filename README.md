@@ -48,6 +48,11 @@ Revibe-lab/
 └─ docs/               # Demo/presentation helper docs
 ```
 
+## Live Deployments
+
+- Frontend (Netlify): `https://revibe-hub.netlify.app/`
+- Backend (Render): `https://revibe-ai.onrender.com`
+
 ## Environment Variables
 
 Frontend (`revibe-ai/.env.local`):
@@ -105,9 +110,9 @@ Detailed presenter script: [docs/demo-script.md](docs/demo-script.md)
 2. Configure backend envs, including CORS and OAuth callback URL
 3. Deploy frontend (Vercel/Netlify) with `NEXT_PUBLIC_API_BASE_URL`
 4. Update backend:
-   - `FRONTEND_BASE_URL` to deployed frontend origin
-   - `CORS_ORIGINS` to include deployed frontend origin
-   - `GITHUB_REDIRECT_URI` to deployed backend callback
+   - `FRONTEND_BASE_URL=https://revibe-hub.netlify.app`
+   - `CORS_ORIGINS` includes `https://revibe-hub.netlify.app`
+   - `GITHUB_REDIRECT_URI=https://revibe-ai.onrender.com/api/github/callback`
 
 See:
 - [Frontend deployment notes](revibe-ai/README.md)

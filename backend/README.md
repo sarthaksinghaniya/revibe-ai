@@ -19,10 +19,10 @@ cp .env.example .env
 Core:
 
 - `NODE_ENV=development|production`
-- `HOST=localhost`
+- `HOST=0.0.0.0`
 - `PORT=4000`
-- `CORS_ORIGINS=http://localhost:3000,https://your-frontend.vercel.app`
-- `FRONTEND_BASE_URL=http://localhost:3000`
+- `CORS_ORIGINS=http://localhost:3000,https://revibe-hub.netlify.app`
+- `FRONTEND_BASE_URL=https://revibe-hub.netlify.app`
 
 AI:
 
@@ -30,9 +30,12 @@ AI:
 
 GitHub:
 
-- `GITHUB_CLIENT_ID=<github-oauth-client-id>`
-- `GITHUB_CLIENT_SECRET=<server-only-secret>`
-- `GITHUB_REDIRECT_URI=http://localhost:4000/api/github/callback`
+- `GITHUB_CLIENT_ID_LOCAL=<local-oauth-client-id>`
+- `GITHUB_CLIENT_SECRET_LOCAL=<local-oauth-client-secret>`
+- `GITHUB_REDIRECT_URI_LOCAL=http://localhost:4000/api/github/callback`
+- `GITHUB_CLIENT_ID_PROD=<prod-oauth-client-id>`
+- `GITHUB_CLIENT_SECRET_PROD=<prod-oauth-client-secret>`
+- `GITHUB_REDIRECT_URI_PROD=https://revibe-ai.onrender.com/api/github/callback`
 - `GITHUB_API_BASE_URL=https://api.github.com`
 - `GITHUB_REPOS_LIMIT=6`
 
@@ -75,9 +78,9 @@ npm run start
 2. Start command: `npm run start`.
 3. Set all env vars listed above.
 4. Update these values after frontend deploy:
-   - `FRONTEND_BASE_URL=https://<your-frontend-domain>`
+   - `FRONTEND_BASE_URL=https://revibe-hub.netlify.app`
    - `CORS_ORIGINS` includes local + deployed frontend origins
-   - `GITHUB_REDIRECT_URI=https://<your-backend-domain>/api/github/callback`
+   - `GITHUB_REDIRECT_URI_PROD=https://revibe-ai.onrender.com/api/github/callback`
 5. In GitHub OAuth App settings, set callback URL to the same backend callback URL.
 
 ## Note on User Persistence

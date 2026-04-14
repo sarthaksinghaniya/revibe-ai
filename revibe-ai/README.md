@@ -21,7 +21,7 @@ Required:
 
 - `NEXT_PUBLIC_API_BASE_URL`
   - Local: `http://localhost:4000`
-  - Production: `https://your-backend-service.onrender.com`
+  - Production: `https://revibe-ai.onrender.com`
 
 Important:
 - Only `NEXT_PUBLIC_*` vars are exposed to browser code.
@@ -60,7 +60,11 @@ Then verify:
 2. Build command: `npm run build`.
 3. Start command (if needed): `npm run start`.
 4. Add env:
-   - `NEXT_PUBLIC_API_BASE_URL=https://<your-backend-domain>`
+   - `NEXT_PUBLIC_API_BASE_URL=https://revibe-ai.onrender.com`
+   - `NEXTAUTH_URL=https://revibe-hub.netlify.app`
+   - `GITHUB_ID_PROD=<production-github-client-id>`
+   - `GITHUB_SECRET_PROD=<production-github-client-secret>`
+   - `NEXTAUTH_SECRET=<strong-random-secret>`
 5. Redeploy after env updates.
 
 ## Backend Wiring Checklist
@@ -69,6 +73,8 @@ After frontend deploy, ensure backend env is updated:
 - `CORS_ORIGINS` includes frontend origin
 - `FRONTEND_BASE_URL` equals deployed frontend origin
 - GitHub OAuth app callback URL points to backend callback route
+
+Current deployed frontend: `https://revibe-hub.netlify.app/`
 
 ## Persistence and Autosave
 
